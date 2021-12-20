@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	const callbackURL = "http://localhost:7000/callback"
+	const callbackURL = "http://localhost:8335/auth-code"
 	flag.Usage = func() {
 		fmt.Println("Usage: openid-client \n" +
 			"       This is a CLI to generate OpenID TD Token from an openID connect server. Create a service provider/application in the openID connect server with call back url : " + callbackURL + " and set below flags to get an ID token\n" +

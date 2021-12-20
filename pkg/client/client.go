@@ -44,14 +44,14 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	callbackEndpoint := &callbackEndpoint{}
 	callbackEndpoint.shutdownSignal = make(chan string)
 	server := &http.Server{
-		Addr:           ":7000",
+		Addr:           ":8335",
 		Handler:        nil,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 	callbackEndpoint.server = server
-	http.Handle("/callback", callbackEndpoint)
+	http.Handle("/auth-code", callbackEndpoint)
 	authzURL, authzURLParseError := url.Parse(provider.Endpoint().AuthURL)
 
 	if authzURLParseError != nil {

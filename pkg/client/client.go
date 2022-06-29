@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -36,7 +37,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, provider oidc.Provider) (string, string) {
+func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, provider oidc.Provider) (string, string) {
 
 	refreshToken := ""
 	accessToken := ""
@@ -130,6 +131,9 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	if clientSecret != "" {
 		vals.Set("client_secret", clientSecret)
 	}
+	if refreshExpiry != "" {
+		vals.Set("refresh_expiry", refreshExpiry)
+	}
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
@@ -139,27 +143,32 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
-	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
-	if result != nil {
-		jsonStr, marshalError := json.Marshal(result)
-		if marshalError != nil {
-			log.Fatal(marshalError)
-		}
-		//log.Println(string(jsonStr))
+	defer resp.Body.Close()
+
+	result, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println("==========")
+	fmt.Println("OIDC Response Body: ", string(result))
+	fmt.Println("==========")
+
+	if resp.StatusCode == 200 && result != nil {
+		var jsonStr = result
 		ctx := context.Background()
 		var myToken oauth2.Token
 		json.Unmarshal([]byte(jsonStr), &myToken)
-		log.Println("ID Token ", myToken.AccessToken)
+		fmt.Println("ID Token ", myToken.AccessToken)
 		if myToken.AccessToken == "" {
-			log.Println(string(jsonStr))
+			fmt.Println(string(jsonStr))
 		} else {
 			// access_token
 			accessToken = myToken.AccessToken
 			// refresh token
 			refreshToken = myToken.RefreshToken
 			// Getting now the userInfo
-			log.Println("Call now UserInfo ")
+			fmt.Println("Call now UserInfo ")
 			userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&myToken))
 			if err != nil {
 				log.Fatal(err)
@@ -194,10 +203,10 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 				log.Fatal(err)
 				return "", ""
 			}
-			log.Println("Claims from id_token ")
-			log.Println(string(data))
-			log.Println("Claims from userinfo call ")
-			log.Println(string(data2))
+			fmt.Println("Claims from id_token ")
+			fmt.Println(string(data))
+			fmt.Println("Claims from userinfo call ")
+			fmt.Println(string(data2))
 		}
 	} else {
 		if resp.StatusCode != 200 {
@@ -209,7 +218,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	return accessToken, refreshToken
 }
 
-func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, provider oidc.Provider) string {
+func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, refreshExpiry string, provider oidc.Provider) string {
 	refreshToken := ""
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -225,6 +234,9 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	if clientSecret != "" {
 		vals.Set("client_secret", clientSecret)
 	}
+	if refreshExpiry != "" {
+		vals.Set("refresh_expiry", refreshExpiry)
+	}
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
@@ -238,8 +250,8 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
-		log.Print("Result from refresh flow: ")
-		log.Println(result)
+		fmt.Print("Result from refresh flow: ")
+		fmt.Println(result)
 		jsonStr, marshalError := json.Marshal(result)
 		if marshalError != nil {
 			log.Fatal(marshalError)

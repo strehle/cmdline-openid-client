@@ -22,6 +22,7 @@ func main() {
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
+			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -h                Show this help\n")
 	}
 
@@ -31,6 +32,7 @@ func main() {
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
+	var refreshExpiry = flag.String("refresh_expiry", "", "Value in secondes to reduce Refresh Token Lifetime")
 
 	flag.Parse()
 	if *clientID == "" {
@@ -43,13 +45,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var accessToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *provider)
+	var accessToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *provider)
 	if *doRefresh {
 		if refreshToken == "" {
 			log.Println("No refresh token received.")
 			return
 		}
-		var newRefresh = client.HandleRefreshFlow(*clientID, *clientSecret, refreshToken, *provider)
+		var newRefresh = client.HandleRefreshFlow(*clientID, *clientSecret, refreshToken, *refreshExpiry, *provider)
 		log.Println("Old refresh token: " + refreshToken)
 		log.Println("New refresh token: " + newRefresh)
 	}

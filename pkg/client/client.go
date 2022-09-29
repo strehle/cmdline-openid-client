@@ -25,6 +25,17 @@ type callbackEndpoint struct {
 	shutdownSignal chan string
 }
 
+// take from oauth2.token structure
+type OIDC_Token struct {
+	// ID token according to OIDC standard, always JWT
+	IdToken string `json:"id_token"`
+	// AccessToken is the token according to OAuth2 standard, might be opaque or JWT
+	AccessToken string `json:"access_token"`
+	// RefreshToken is a token that's used by the application
+	RefreshToken string `json:"refresh_token,omitempty"`
+	raw          interface{}
+}
+
 func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	code := r.URL.Query().Get("code")
@@ -126,6 +137,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	vals.Set("code", callbackEndpoint.code)
 	vals.Set("redirect_uri", callbackURL)
 	vals.Set("code_verifier", codeVerifier)
+	vals.Set("token_format", "opaque")
 	//vals.Set("code_verifier", "01234567890123456789012345678901234567890123456789")
 	vals.Set("client_id", clientID)
 	if clientSecret != "" {
@@ -157,19 +169,25 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	if resp.StatusCode == 200 && result != nil {
 		var jsonStr = result
 		ctx := context.Background()
-		var myToken oauth2.Token
+		var myToken OIDC_Token
+		var stanardToken oauth2.Token
 		json.Unmarshal([]byte(jsonStr), &myToken)
-		fmt.Println("ID Token ", myToken.AccessToken)
+		fmt.Println("Access Token  ", myToken.AccessToken)
+		fmt.Println("   ")
+		fmt.Println("ID Token      ", myToken.IdToken)
+		fmt.Println("   ")
+		fmt.Println("Refresh Token ", myToken.RefreshToken)
+		fmt.Println("==========")
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
 		} else {
-			// access_token
-			accessToken = myToken.AccessToken
+			// access token
+			stanardToken.AccessToken = myToken.AccessToken
 			// refresh token
-			refreshToken = myToken.RefreshToken
+			stanardToken.RefreshToken = myToken.RefreshToken
 			// Getting now the userInfo
-			fmt.Println("Call now UserInfo ")
-			userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&myToken))
+			fmt.Println("Call now UserInfo with access_token")
+			userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
 			if err != nil {
 				log.Fatal(err)
 				return "", ""
@@ -177,7 +195,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 			oidcConfig := &oidc.Config{
 				ClientID: clientID,
 			}
-			idToken, err := provider.Verifier(oidcConfig).Verify(context.TODO(), myToken.AccessToken)
+			idToken, err := provider.Verifier(oidcConfig).Verify(context.TODO(), myToken.IdToken)
 			if err != nil {
 				log.Fatal(err)
 				return "", ""
@@ -203,9 +221,9 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 				log.Fatal(err)
 				return "", ""
 			}
-			fmt.Println("Claims from id_token ")
+			fmt.Println("Claims parsed out from id_token ")
 			fmt.Println(string(data))
-			fmt.Println("Claims from userinfo call ")
+			fmt.Println("Claims returned from request to userinfo endpoint ")
 			fmt.Println(string(data2))
 		}
 	} else {

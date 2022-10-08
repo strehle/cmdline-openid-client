@@ -48,7 +48,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, provider oidc.Provider) (string, string) {
+func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, provider oidc.Provider) (string, string) {
 
 	refreshToken := ""
 	accessToken := ""
@@ -56,7 +56,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	callbackEndpoint := &callbackEndpoint{}
 	callbackEndpoint.shutdownSignal = make(chan string)
 	server := &http.Server{
-		Addr:           ":7000",
+		Addr:           ":" + port,
 		Handler:        nil,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -137,7 +137,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	vals.Set("code", callbackEndpoint.code)
 	vals.Set("redirect_uri", callbackURL)
 	vals.Set("code_verifier", codeVerifier)
-	vals.Set("token_format", "opaque")
+	vals.Set("token_format", tokenFormatParameter)
 	//vals.Set("code_verifier", "01234567890123456789012345678901234567890123456789")
 	vals.Set("client_id", clientID)
 	if clientSecret != "" {

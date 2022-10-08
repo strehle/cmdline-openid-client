@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	const callbackURL = "http://localhost:7000/callback"
 	flag.Usage = func() {
 		fmt.Println("Usage: openid-client \n" +
-			"       This is a CLI to generate OpenID TD Token from an openID connect server. Create a service provider/application in the openID connect server with call back url : " + callbackURL + " and set below flags to get an ID token\n" +
+			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaiant server. Create a service provider/application in the OIDC server with call back url:\n" +
+			"       http://localhost:<port>/callback and set below flags to get an ID token\n" +
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
@@ -23,6 +23,8 @@ func main() {
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
+			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
+			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -h                Show this help\n")
 	}
 
@@ -33,6 +35,10 @@ func main() {
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in secondes to reduce Refresh Token Lifetime")
+	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
+	var portParameter = flag.String("port", "8080", "Callback port on localhost")
+
+	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 
 	flag.Parse()
 	if *clientID == "" {
@@ -45,7 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var accessToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *provider)
+	var accessToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, *provider)
 	if *doRefresh {
 		if refreshToken == "" {
 			log.Println("No refresh token received.")

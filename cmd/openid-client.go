@@ -38,7 +38,6 @@ func main() {
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
 
-	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 
 	flag.Parse()
 	if *clientID == "" {
@@ -46,6 +45,7 @@ func main() {
 	} else if *issEndPoint == "" {
 		log.Fatal("issuer is required to run this command")
 	}
+	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, *issEndPoint)
 	if err != nil {

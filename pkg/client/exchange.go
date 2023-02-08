@@ -10,12 +10,15 @@ import (
 	oidc "github.com/coreos/go-oidc"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, provider oidc.Provider) string {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider) string {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
 	params.Add("response_type", `token id_token`)
 	params.Add("client_id", clientID)
+	if idpScopeParameter != "" {
+		params.Add("scope", idpScopeParameter)
+	}
 
 	body := strings.NewReader(params.Encode())
 
@@ -41,7 +44,7 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	if resp.StatusCode == http.StatusOK {
 		return bodyString
 	} else {
-		log.Fatal("Error from token exchange")
+		log.Fatal("Error from token exchange: " + bodyString)
 		log.Fatal(bodyString)
 		return ""
 	}

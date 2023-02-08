@@ -51,7 +51,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, provider oidc.Provider) (string, string) {
 
 	refreshToken := ""
-	accessToken := ""
+	idToken := ""
 	authrizationScope := "openid"
 	callbackEndpoint := &callbackEndpoint{}
 	callbackEndpoint.shutdownSignal = make(chan string)
@@ -183,8 +183,10 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 		} else {
 			// access token
 			stanardToken.AccessToken = myToken.AccessToken
+			idToken = myToken.IdToken
 			// refresh token
 			stanardToken.RefreshToken = myToken.RefreshToken
+			refreshToken = myToken.RefreshToken
 			// Getting now the userInfo
 			fmt.Println("Call now UserInfo with access_token")
 			userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
@@ -233,7 +235,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 			log.Println("Error while getting ID token")
 		}
 	}
-	return accessToken, refreshToken
+	return idToken, refreshToken
 }
 
 func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, refreshExpiry string, provider oidc.Provider) string {

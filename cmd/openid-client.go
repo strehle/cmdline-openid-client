@@ -19,9 +19,10 @@ func main() {
 			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
 			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
-			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none the parameter scope will be omitted in request.\n" +
+			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
+			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
@@ -37,7 +38,7 @@ func main() {
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in secondes to reduce Refresh Token Lifetime")
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
-
+	var idpScopeParameter = flag.String("idp_scope", "", "Request scope parameter in OIDC IdP token")
 
 	flag.Parse()
 	if *clientID == "" {
@@ -51,7 +52,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var accessToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, *provider)
+	var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, *provider)
 	if *doRefresh {
 		if refreshToken == "" {
 			log.Println("No refresh token received.")
@@ -62,15 +63,15 @@ func main() {
 		log.Println("New refresh token: " + newRefresh)
 	}
 	if *doCorpIdpTokenExchange {
-		if accessToken == "" {
-			log.Println("No access token received.")
+		if idToken == "" {
+			log.Println("No id_token token received.")
 			return
 		}
 		if *clientSecret == "" {
 			log.Fatal("client_secret is required to run this command")
 			return
 		}
-		var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, accessToken, *provider)
+		var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, *provider)
 		log.Println("IDP token response")
 		log.Println(idpTokenResponse)
 	}

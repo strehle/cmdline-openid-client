@@ -22,6 +22,7 @@ Flags:
        -scope           OIDC scope parameter. This is an optional flag, default is openid. If you set none the parameter scope will be omitted in request.
        -refresh         Bool flag. Default false. If true, call refresh flow for the received id_token.
        -idp_token       Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
+       -idp_scope       OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only)
        -refresh_expiry  Value in seconds. Optional parameter to reduce Refresh Token Lifetime
        -token_format    Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
        -port            Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080

@@ -19,11 +19,13 @@ Flags:
        -issuer          IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
        -client_id       OIDC client ID. This is a mandatory flag.
        -client_secret   OIDC client secret. This is an optional flag and only needed for confidential clients.
+       -client_tls      OIDC client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.
        -scope           OIDC scope parameter. This is an optional flag, default is openid. If you set none the parameter scope will be omitted in request.
        -refresh         Bool flag. Default false. If true, call refresh flow for the received id_token.
        -idp_token       Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
        -refresh_expiry  Value in seconds. Optional parameter to reduce Refresh Token Lifetime
        -token_format    Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
+       -pin             PIN to PKCS12 file
        -port            Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080
        -h               Show this help
 ``` 

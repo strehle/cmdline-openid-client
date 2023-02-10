@@ -48,7 +48,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, provider oidc.Provider) (string, string) {
+func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -124,13 +124,6 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	<-callbackEndpoint.shutdownSignal
 	callbackEndpoint.server.Shutdown(context.Background())
 	log.Println("Authorization code is ", callbackEndpoint.code)
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
 
 	vals := url.Values{}
 	vals.Set("grant_type", "authorization_code")
@@ -151,7 +144,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 		log.Fatal(requestError)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, clientError := client.Do(req)
+	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}

@@ -10,7 +10,7 @@ import (
 	oidc "github.com/coreos/go-oidc"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider) string {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider, tlsClient http.Client) string {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
@@ -28,10 +28,12 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	if err != nil {
 		return ""
 	}
-	req.SetBasicAuth(clientID, clientSecret)
+	if clientSecret != "" {
+		req.SetBasicAuth(clientID, clientSecret)
+	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := tlsClient.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -49,7 +49,6 @@ func main() {
 	var clientPkcs12 = flag.String("client_tls", "", "PKCS12 file for OIDC client mTLS authentication")
 	var pin = flag.String("pin", "", "PIN to PKCS12 file")
 	var mTLS bool = false
-
 	flag.Parse()
 	if *clientID == "" {
 		log.Fatal("client_id is required to run this command")

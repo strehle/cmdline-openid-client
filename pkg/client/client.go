@@ -163,15 +163,15 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 		log.Fatalln(err)
 	}
 
-	fmt.Println("==========")
-	var outBodyMap map[string]interface{}
-	json.Unmarshal(result, &outBodyMap)
-	resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
-	fmt.Println("OIDC Response Body")
-	fmt.Println(string(resultJson))
-	fmt.Println("==========")
-
 	if resp.StatusCode == 200 && result != nil {
+		fmt.Println("==========")
+		var outBodyMap map[string]interface{}
+		json.Unmarshal(result, &outBodyMap)
+		resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
+		fmt.Println("OIDC Response Body")
+		fmt.Println(string(resultJson))
+		fmt.Println("==========")
+
 		var jsonStr = result
 		ctx := context.Background()
 		var myToken OIDC_Token

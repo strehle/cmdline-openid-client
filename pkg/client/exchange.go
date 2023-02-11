@@ -1,6 +1,8 @@
 package client
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -10,7 +12,7 @@ import (
 	oidc "github.com/coreos/go-oidc"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider, tlsClient http.Client) string {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider, tlsClient http.Client) map[string]interface{} {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
@@ -23,10 +25,10 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	body := strings.NewReader(params.Encode())
 
 	tokenEndPoint := strings.Replace(provider.Endpoint().TokenURL, "/token", "/exchange/corporateidp", 1)
-	log.Println("Call IdP Token Exchange Endpoint: " + tokenEndPoint)
+	fmt.Println("Call IdP Token Exchange Endpoint: " + tokenEndPoint)
 	req, err := http.NewRequest("POST", tokenEndPoint, body)
 	if err != nil {
-		return ""
+		log.Fatal("Error from token exchange: " + err.Error())
 	}
 	if clientSecret != "" {
 		req.SetBasicAuth(clientID, clientSecret)
@@ -42,12 +44,12 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	if err != nil {
 		log.Fatal(err)
 	}
-	bodyString := string(bodyBytes)
+	var outBodyMap map[string]interface{}
 	if resp.StatusCode == http.StatusOK {
-		return bodyString
+		json.Unmarshal(bodyBytes, &outBodyMap)
 	} else {
-		log.Fatal("Error from token exchange: " + bodyString)
-		log.Fatal(bodyString)
-		return ""
+		log.Fatal("Error from token exchange: " + string(bodyBytes))
+		log.Fatal(string(bodyBytes))
 	}
+	return outBodyMap
 }

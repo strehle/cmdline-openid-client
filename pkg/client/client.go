@@ -41,14 +41,20 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code != "" {
 		h.code = code
-		fmt.Fprintln(w, "Login is successful, You may close the browser and goto commandline")
+		logoutUrl := r.URL.Query().Get("state")
+		if logoutUrl != "" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprintln(w, "<html><body>Login is successful, You may logout with: <a href=\""+logoutUrl+"\">Logout</a></body></html>")
+		} else {
+			fmt.Fprintln(w, "Login is successful, You may close the browser and goto commandline")
+		}
 	} else {
 		fmt.Fprintln(w, "Login is not successful, You may close the browser and try again")
 	}
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -93,6 +99,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	query.Set("code_challenge", codeChallenge)
 	query.Set("code_challenge_method", "S256")
 	query.Set("redirect_uri", callbackURL)
+	query.Set("state", endsession+"?client_id="+clientID)
 	authzURL.RawQuery = query.Encode()
 
 	//cmd := exec.Command("open", authzURL.String())
@@ -123,7 +130,8 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 
 	<-callbackEndpoint.shutdownSignal
 	callbackEndpoint.server.Shutdown(context.Background())
-	log.Println("Authorization code is ", callbackEndpoint.code)
+	fmt.Println("")
+	fmt.Println("Authorization code is ", callbackEndpoint.code)
 
 	vals := url.Values{}
 	vals.Set("grant_type", "authorization_code")
@@ -156,7 +164,11 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	}
 
 	fmt.Println("==========")
-	fmt.Println("OIDC Response Body: ", string(result))
+	var outBodyMap map[string]interface{}
+	json.Unmarshal(result, &outBodyMap)
+	resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
+	fmt.Println("OIDC Response Body")
+	fmt.Println(string(resultJson))
 	fmt.Println("==========")
 
 	if resp.StatusCode == 200 && result != nil {
@@ -165,12 +177,14 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 		var myToken OIDC_Token
 		var stanardToken oauth2.Token
 		json.Unmarshal([]byte(jsonStr), &myToken)
-		fmt.Println("Access Token  ", myToken.AccessToken)
-		fmt.Println("   ")
-		fmt.Println("ID Token      ", myToken.IdToken)
-		fmt.Println("   ")
-		fmt.Println("Refresh Token ", myToken.RefreshToken)
-		fmt.Println("==========")
+		/*
+			fmt.Println("Access Token  ", myToken.AccessToken)
+			fmt.Println("   ")
+			fmt.Println("ID Token      ", myToken.IdToken)
+			fmt.Println("   ")
+			fmt.Println("Refresh Token ", myToken.RefreshToken)
+			fmt.Println("==========")
+		*/
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
 		} else {

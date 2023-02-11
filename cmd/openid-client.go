@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -61,7 +62,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	var claims struct {
+		EndSessionEndpoint string `json:"end_session_endpoint"`
+	}
+	provider.Claims(&claims)
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -102,7 +106,7 @@ func main() {
 		mTLS = true
 	}
 
-	var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, *provider, *tlsClient)
+	var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, *provider, *tlsClient)
 	if *doRefresh {
 		if refreshToken == "" {
 			log.Println("No refresh token received.")
@@ -122,7 +126,8 @@ func main() {
 			return
 		}
 		var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, *provider, *tlsClient)
-		log.Println("IDP token response")
-		log.Println(idpTokenResponse)
+		data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
+		fmt.Println("Response from endpoint /exchange/corporateidp")
+		fmt.Println(string(data))
 	}
 }

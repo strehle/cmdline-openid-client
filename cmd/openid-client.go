@@ -34,7 +34,7 @@ func main() {
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -pin              PIN to PKCS12 file\n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
-			"      -h                Show this help\n")
+			"      -h                Show this help")
 	}
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")
@@ -65,7 +65,10 @@ func main() {
 	var claims struct {
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 	}
-	provider.Claims(&claims)
+	err = provider.Claims(&claims)
+	if err != nil {
+		log.Fatal(err)
+	}
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -74,13 +77,13 @@ func main() {
 		},
 	}
 	if *clientPkcs12 != "" && *pin != "" {
-		p12_data, err := ioutil.ReadFile(*clientPkcs12)
-		if err != nil {
+		p12Data, readerror := ioutil.ReadFile(*clientPkcs12)
+		if readerror != nil {
 			log.Println("read pkcs12 failed")
-			log.Println(err)
+			log.Println(readerror)
 			return
 		}
-		blocks, err := pkcs12.ToPEM(p12_data, *pin)
+		blocks, err := pkcs12.ToPEM(p12Data, *pin)
 		if err != nil {
 			log.Println("decode pkcs12 failed")
 			log.Println(err)

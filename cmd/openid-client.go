@@ -10,8 +10,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 
 	oidc "github.com/coreos/go-oidc"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/strehle/cmdline-openid-client/pkg/client"
 	"golang.org/x/crypto/pkcs12"
 	"golang.org/x/net/context"
@@ -34,6 +36,7 @@ func main() {
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
+			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credential\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -h                Show this help")
@@ -52,13 +55,18 @@ func main() {
 	var clientPkcs12 = flag.String("client_tls", "", "PKCS12 file for OIDC client mTLS authentication")
 	var clientJwtPkcs12 = flag.String("client_jwt", "", "PKCS12 file for OIDC private_key_jwt authentication")
 	var pin = flag.String("pin", "", "PIN to PKCS12 file")
+	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
 	flag.Parse()
-	if *clientID == "" {
-		log.Fatal("client_id is required to run this command")
-	} else if *issEndPoint == "" {
-		log.Fatal("issuer is required to run this command")
+	if *command == "jwks" {
+		*issEndPoint = "https://accounts.sap.com"
+	} else {
+		if *clientID == "" {
+			log.Fatal("client_id is required to run this command")
+		} else if *issEndPoint == "" {
+			log.Fatal("issuer is required to run this command")
+		}
 	}
 	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 	ctx := context.Background()
@@ -118,6 +126,27 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			if *command == "jwks" {
+				fromRawKey, err := jwk.FromRaw(cert0.PublicKey)
+				if err != nil {
+					log.Printf("failed to acquire raw key from jwk.Key: %s", err)
+					return
+				}
+				if err != nil {
+					log.Printf("failed to acquire raw key from jwk.Key: %s", err)
+					return
+				}
+				sha1Sum := client.CalculateSha1ThumbPrint(*cert0)
+				fromRawKey.Set(jwk.KeyIDKey, sha1Sum)
+				fromRawKey.Set(jwk.X509CertThumbprintKey, sha1Sum)
+				fromRawKey.Set(jwk.AlgorithmKey, "RS256")
+				buf, err := json.MarshalIndent(fromRawKey, "", "  ")
+				if err != nil {
+					fmt.Printf("failed to marshal key into JSON: %s\n", err)
+					return
+				}
+				fmt.Printf("%s\n", buf)
+			}
 		} else {
 			tlsClient = &http.Client{
 				Transport: &http.Transport{
@@ -130,28 +159,51 @@ func main() {
 		}
 	}
 
-	var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
-	if *doRefresh {
-		if refreshToken == "" {
-			log.Println("No refresh token received.")
-			return
-		}
-		var newRefresh = client.HandleRefreshFlow(*clientID, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *provider)
-		log.Println("Old refresh token: " + refreshToken)
-		log.Println("New refresh token: " + newRefresh)
+	requestMap := url.Values{}
+	requestMap.Set("client_id", *clientID)
+	if *clientSecret != "" {
+		requestMap.Set("client_secret", *clientSecret)
 	}
-	if *doCorpIdpTokenExchange {
-		if idToken == "" {
-			log.Println("No id_token token received.")
-			return
+	if privateKeyJwt != "" {
+		requestMap.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		requestMap.Set("client_assertion", privateKeyJwt)
+	}
+	if *tokenFormatParameter != "" {
+		requestMap.Set("token_format", *tokenFormatParameter)
+	}
+	if *refreshExpiry != "" {
+		requestMap.Set("refresh_expiry", *refreshExpiry)
+	}
+
+	if *command != "" {
+		if *command == "client_credentials" {
+			client.HandleClientCredential(requestMap, *provider, *tlsClient)
+		} else if *command == "jwks" {
 		}
-		if *clientSecret == "" && mTLS == false && privateKeyJwt == "" {
-			log.Fatal("client_secret is required to run this command")
-			return
+	} else {
+		var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		if *doRefresh {
+			if refreshToken == "" {
+				log.Println("No refresh token received.")
+				return
+			}
+			var newRefresh = client.HandleRefreshFlow(*clientID, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *provider)
+			log.Println("Old refresh token: " + refreshToken)
+			log.Println("New refresh token: " + newRefresh)
 		}
-		var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, *provider, *tlsClient)
-		data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
-		fmt.Println("Response from endpoint /exchange/corporateidp")
-		fmt.Println(string(data))
+		if *doCorpIdpTokenExchange {
+			if idToken == "" {
+				log.Println("No id_token token received.")
+				return
+			}
+			if *clientSecret == "" && mTLS == false && privateKeyJwt == "" {
+				log.Fatal("client_secret is required to run this command")
+				return
+			}
+			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, *provider, *tlsClient)
+			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
+			fmt.Println("Response from endpoint /exchange/corporateidp")
+			fmt.Println(string(data))
+		}
 	}
 }

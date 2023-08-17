@@ -12,12 +12,16 @@ import (
 	oidc "github.com/coreos/go-oidc"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, provider oidc.Provider, tlsClient http.Client) map[string]interface{} {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) map[string]interface{} {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
 	params.Add("response_type", `token id_token`)
 	params.Add("client_id", clientID)
+	if privateKeyJwt != "" {
+		params.Add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		params.Add("client_assertion", privateKeyJwt)
+	}
 	if idpScopeParameter != "" {
 		params.Add("scope", idpScopeParameter)
 	}

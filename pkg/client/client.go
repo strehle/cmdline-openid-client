@@ -2,9 +2,13 @@ package client
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +20,7 @@ import (
 
 	"github.com/akshaybabloo/pkce"
 	oidc "github.com/coreos/go-oidc"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
 
@@ -54,7 +59,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -146,6 +151,10 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	}
 	if refreshExpiry != "" {
 		vals.Set("refresh_expiry", refreshExpiry)
+	}
+	if privateKeyJwt != "" {
+		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		vals.Set("client_assertion", privateKeyJwt)
 	}
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
 	if requestError != nil {
@@ -245,7 +254,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	return idToken, refreshToken
 }
 
-func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, refreshExpiry string, provider oidc.Provider) string {
+func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, provider oidc.Provider) string {
 	refreshToken := ""
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -263,6 +272,10 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	}
 	if refreshExpiry != "" {
 		vals.Set("refresh_expiry", refreshExpiry)
+	}
+	if privateKeyJwt != "" {
+		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		vals.Set("client_assertion", privateKeyJwt)
 	}
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
 	if requestError != nil {
@@ -288,4 +301,32 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 		refreshToken = myToken.RefreshToken
 	}
 	return refreshToken
+}
+
+func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoint string, pemData []byte) (string, error) {
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(pemData)
+	if err != nil {
+		return "", fmt.Errorf("create: parse key: %w", err)
+	}
+	certSum := sha1.Sum(x509Cert.Raw)
+	sha1Sum := base64.RawURLEncoding.EncodeToString(certSum[:])
+	now := time.Now().UTC()
+
+	claims := make(jwt.MapClaims)
+	claims["iss"] = clientID                        // Our clientID
+	claims["sub"] = clientID                        // Our clientID
+	claims["aud"] = tokenEndpoint                   // The token endpoint of receiver
+	claims["exp"] = now.Add(time.Minute * 5).Unix() // The expiration time after which the token must be disregarded.
+	claims["iat"] = now.Unix()                      // The time at which the token was issued.
+	claims["jti"] = uuid.New().String()             // The jti
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims) // .SignedString(key)
+	token.Header["kid"] = sha1Sum
+	token.Header["x5t"] = sha1Sum
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("create: sign token: %w", err)
+	}
+
+	return tokenString, nil
 }

@@ -13,8 +13,8 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/strehle/cmdline-openid-client/pkg/client"
-	"golang.org/x/crypto/pkcs12"
 	"golang.org/x/net/context"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 func main() {
@@ -114,7 +114,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, pemData)
+			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, cert.PrivateKey)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto"
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
@@ -303,11 +304,7 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	return refreshToken
 }
 
-func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoint string, pemData []byte) (string, error) {
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(pemData)
-	if err != nil {
-		return "", fmt.Errorf("create: parse key: %w", err)
-	}
+func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {
 	certSum := sha1.Sum(x509Cert.Raw)
 	sha1Sum := base64.RawURLEncoding.EncodeToString(certSum[:])
 	now := time.Now().UTC()
@@ -323,7 +320,7 @@ func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoi
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims) // .SignedString(key)
 	token.Header["kid"] = sha1Sum
 	token.Header["x5t"] = sha1Sum
-	tokenString, err := token.SignedString(key)
+	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
 		return "", fmt.Errorf("create: sign token: %w", err)
 	}

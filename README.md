@@ -1,5 +1,5 @@
  # SAP IAS openid-commandline-client
-It is a CLI to generate OpenID TD Token from an OpenID Connect (OIDC) complaiant server, mainly created to test PKCE and Public Client support, like SAP IAS provides it. However any other OIDC provider can be used to get tokens.
+This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaiant server, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Maily for IAS complaince tests. However any other OIDC provider can be used to get tokens.
 
 The execution will open a port on you localhost machine. Please ensure that this port is usable. In additon, you need to specify the redirect_uri in your OIDC server,
 e.g. http://localhost:8080/callback. If you set port 9002, expect redirect_uri http://localhost:9002/callback
@@ -10,11 +10,15 @@ Use the go tool chain to build the binary.
 ```text
 go build cmd/openid-client.go
 ```
+on a OS with make environment, simply execute
+```text
+make
+```
 ### How to test
 ```text
-./openid-client -help
+./openid-client -h
 Usage: openid-client
-       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaiant server. Create a service provider/application in the OIDC server with call back url:
+       This is a CLI to generate tokens from an OIDC complaiant server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
 Flags:
       -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
@@ -30,6 +34,5 @@ Flags:
       -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
       -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt
       -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080
-      -h                Show this help
-``` 
-for more details.
+      -h                Show this help for more details.
+```

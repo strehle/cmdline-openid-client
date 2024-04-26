@@ -15,8 +15,8 @@ import (
 	oidc "github.com/coreos/go-oidc"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/strehle/cmdline-openid-client/pkg/client"
-	"golang.org/x/crypto/pkcs12"
 	"golang.org/x/net/context"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
-			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credential\n" +
+			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -h                Show this help")
@@ -122,7 +122,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, pemData)
+			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, cert.PrivateKey)
 			if err != nil {
 				log.Fatal(err)
 			}

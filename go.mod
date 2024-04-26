@@ -1,6 +1,6 @@
 module github.com/strehle/cmdline-openid-client
 
-go 1.19
+go 1.21
 
 require (
 	github.com/akshaybabloo/pkce v1.0.2
@@ -8,7 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/google/uuid v1.6.0
 	golang.org/x/crypto v0.22.0
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	golang.org/x/oauth2 v0.19.0
 )
 

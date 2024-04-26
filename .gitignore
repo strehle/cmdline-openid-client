@@ -14,3 +14,4 @@
 openid-client
 *.iml
 .idea
+dist/

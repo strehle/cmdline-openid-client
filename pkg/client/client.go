@@ -304,6 +304,37 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	return refreshToken
 }
 
+func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClient http.Client) string {
+	refreshToken := ""
+	request.Set("grant_type", "client_credentials")
+	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		jsonStr, marshalError := json.Marshal(result)
+		if marshalError != nil {
+			log.Fatal(marshalError)
+		}
+		var myToken oauth2.Token
+		json.Unmarshal([]byte(jsonStr), &myToken)
+		if myToken.AccessToken == "" {
+			fmt.Println(string(jsonStr))
+		} else {
+			fmt.Println("Access Token: " + myToken.AccessToken)
+		}
+	}
+	return refreshToken
+}
+
 func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {
 	certSum := sha1.Sum(x509Cert.Raw)
 	sha1Sum := base64.RawURLEncoding.EncodeToString(certSum[:])
@@ -326,4 +357,9 @@ func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoi
 	}
 
 	return tokenString, nil
+}
+
+func CalculateSha1ThumbPrint(x509Cert x509.Certificate) string {
+	certSum := sha1.Sum(x509Cert.Raw)
+	return base64.RawURLEncoding.EncodeToString(certSum[:])
 }

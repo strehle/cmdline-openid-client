@@ -1,6 +1,6 @@
 module github.com/strehle/cmdline-openid-client
 
-go 1.19
+go 1.21
 
 require (
 	github.com/akshaybabloo/pkce v1.0.2

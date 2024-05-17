@@ -304,7 +304,7 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	return refreshToken
 }
 
-func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClient http.Client) string {
+func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
 	refreshToken := ""
 	request.Set("grant_type", "client_credentials")
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
@@ -329,7 +329,11 @@ func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClien
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
 		} else {
-			fmt.Println("Access Token: " + myToken.AccessToken)
+			if verbose {
+				fmt.Println("Access Token: " + myToken.AccessToken)
+			} else {
+				fmt.Println(myToken.AccessToken)
+			}
 		}
 	}
 	return refreshToken
@@ -351,6 +355,27 @@ func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoi
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims) // .SignedString(key)
 	token.Header["kid"] = sha1Sum
 	token.Header["x5t"] = sha1Sum
+	tokenString, err := token.SignedString(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("create: sign token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+func CreatePrivateKeyJwtKid(clientID string, keyId string, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {
+	now := time.Now().UTC()
+
+	claims := make(jwt.MapClaims)
+	claims["iss"] = clientID                        // Our clientID
+	claims["sub"] = clientID                        // Our clientID
+	claims["aud"] = tokenEndpoint                   // The token endpoint of receiver
+	claims["exp"] = now.Add(time.Minute * 5).Unix() // The expiration time after which the token must be disregarded.
+	claims["iat"] = now.Unix()                      // The time at which the token was issued.
+	claims["jti"] = uuid.New().String()             // The jti
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims) // .SignedString(key)
+	token.Header["kid"] = keyId
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
 		return "", fmt.Errorf("create: sign token: %w", err)

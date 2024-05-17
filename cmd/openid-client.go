@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -30,6 +31,8 @@ func main() {
 			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
 			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
 			"      -client_jwt       P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
+			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
+			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
@@ -39,7 +42,7 @@ func main() {
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
-			"      -h                Show this help")
+			"      -h                Show this help for more details.")
 	}
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")
@@ -55,6 +58,8 @@ func main() {
 	var clientPkcs12 = flag.String("client_tls", "", "PKCS12 file for OIDC client mTLS authentication")
 	var clientJwtPkcs12 = flag.String("client_jwt", "", "PKCS12 file for OIDC private_key_jwt authentication")
 	var pin = flag.String("pin", "", "PIN to PKCS12 file")
+	var clientJwtKey = flag.String("client_jwt_key", "", "Private Key signing the client JWT for private_key_jwt authentication")
+	var clientJwtKid = flag.String("client_jwt_kid", "", "Key ID of client JWT for private_key_jwt authentication")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
@@ -157,6 +162,28 @@ func main() {
 			}
 			mTLS = true
 		}
+	} else if *clientJwtKey != "" {
+		if *clientJwtKid == "" {
+			log.Fatal("client_jwt_kid is required to run this command")
+			return
+		}
+		pemKey, readerror := ioutil.ReadFile(*clientJwtKey)
+		if readerror != nil {
+			log.Println("read private key failed")
+			log.Println(readerror)
+			return
+		}
+		signKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemKey)
+		if err != nil {
+			log.Println("decode of RSA private key failed")
+			log.Println(err)
+			return
+		}
+		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, *clientJwtKid, claims.TokenEndPoint, signKey)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
 	}
 
 	requestMap := url.Values{}
@@ -168,8 +195,10 @@ func main() {
 		requestMap.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
+	var verbose = true
 	if *tokenFormatParameter != "" {
 		requestMap.Set("token_format", *tokenFormatParameter)
+		verbose = false
 	}
 	if *refreshExpiry != "" {
 		requestMap.Set("refresh_expiry", *refreshExpiry)
@@ -177,7 +206,7 @@ func main() {
 
 	if *command != "" {
 		if *command == "client_credentials" {
-			client.HandleClientCredential(requestMap, *provider, *tlsClient)
+			client.HandleClientCredential(requestMap, *provider, *tlsClient, verbose)
 		} else if *command == "jwks" {
 		}
 	} else {

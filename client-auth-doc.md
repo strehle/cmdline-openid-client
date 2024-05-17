@@ -64,8 +64,19 @@ can be used with this tool.
 ##### Cons
 * There are not much clients which support this standard, therefore this tool was created for.
 
+### Howto Use the Private Key only for Private Key JWT
 
-### Howto setup Self-Signed Keys for Private Key JWT 
+1. Optional create key pairs and X509 certificate
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj "/C=DE/ST=BW/L=Walldorf/O=SAP/OU=Security/CN=localhost"
+```
+
+2. Use the private key for client authentication
+```bash
+openid-client -issuer <yourIAS> -client_id 11111111-your-client-11111111 -client_jwt_kid ./key.pem -client_jwt_kid key-id-1
+```
+
+### Howto setup PKCS12 Key+Certificate for Private Key JWT 
 
 1. Optional create key pairs and X509 certificate
 ```bash
@@ -86,7 +97,6 @@ openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_result.p12
 ```bash
 openid-client -issuer <yourIAS> -client_id 11111111-your-client-11111111 -client_jwt ./final_result.p12 -pin Test1234
 ```
-
 
 ### IAS OIDC
 https://help.sap.com/docs/identity-authentication/identity-authentication/openid-connect

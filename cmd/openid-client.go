@@ -42,7 +42,7 @@ func main() {
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
-			"      -h                Show this help")
+			"      -h                Show this help for more details.")
 	}
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")

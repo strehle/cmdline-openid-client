@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/sha1"
@@ -8,12 +9,15 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -363,7 +367,7 @@ func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoi
 	return tokenString, nil
 }
 
-func CreatePrivateKeyJwtKid(clientID string, keyId string, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {
+func CreatePrivateKeyJwtKid(clientID string, keyId string, x5tId string, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {
 	now := time.Now().UTC()
 
 	claims := make(jwt.MapClaims)
@@ -376,12 +380,43 @@ func CreatePrivateKeyJwtKid(clientID string, keyId string, tokenEndpoint string,
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims) // .SignedString(key)
 	token.Header["kid"] = keyId
+	if x5tId != "" {
+		token.Header["x5t"] = x5tId
+	}
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
 		return "", fmt.Errorf("create: sign token: %w", err)
 	}
 
 	return tokenString, nil
+}
+
+func CalculateSha1FromX509(valueOrPath string) (string, error) {
+	if fileExists(valueOrPath) {
+		pemData, readerror := ioutil.ReadFile(valueOrPath)
+		if readerror != nil {
+			return "", fmt.Errorf("read failed: %w", readerror)
+		}
+		if bytes.Contains(pemData, []byte("-----BEGIN CERTIFICATE-----")) == false || bytes.Contains(pemData, []byte("-----END CERTIFICATE-----")) == false {
+			return "", fmt.Errorf("missing PEM header")
+		}
+		block, _ := pem.Decode([]byte(pemData))
+		cert, err := x509.ParseCertificates(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("x509 parser error: %w", err)
+		}
+		return CalculateSha1ThumbPrint(*cert[0]), nil
+	} else {
+		return valueOrPath, nil
+	}
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func CalculateSha1ThumbPrint(x509Cert x509.Certificate) string {

@@ -32,7 +32,8 @@ func main() {
 			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
 			"      -client_jwt       P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
 			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
-			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin.\n" +
+			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -client_jwt_x5t   X5T Header for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
@@ -60,6 +61,7 @@ func main() {
 	var pin = flag.String("pin", "", "PIN to PKCS12 file")
 	var clientJwtKey = flag.String("client_jwt_key", "", "Private Key signing the client JWT for private_key_jwt authentication")
 	var clientJwtKid = flag.String("client_jwt_kid", "", "Key ID of client JWT for private_key_jwt authentication")
+	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
@@ -167,6 +169,12 @@ func main() {
 			log.Fatal("client_jwt_kid is required to run this command")
 			return
 		}
+		kidValue, err := client.CalculateSha1FromX509(*clientJwtKid)
+		if err != nil {
+			log.Println("read client_jwt_kid value failed")
+			log.Println(err)
+			return
+		}
 		pemKey, readerror := ioutil.ReadFile(*clientJwtKey)
 		if readerror != nil {
 			log.Println("read private key failed")
@@ -179,7 +187,16 @@ func main() {
 			log.Println(err)
 			return
 		}
-		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, *clientJwtKid, claims.TokenEndPoint, signKey)
+		var x5tValue string = ""
+		if *clientJwtKid != "" {
+			x5tValue, err = client.CalculateSha1FromX509(*clientJwtX5t)
+			if err != nil {
+				log.Println("read x5t value failed")
+				log.Println(err)
+				return
+			}
+		}
+		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, claims.TokenEndPoint, signKey)
 		if err != nil {
 			log.Fatal(err)
 			return

@@ -23,7 +23,7 @@ import (
 func main() {
 	flag.Usage = func() {
 		fmt.Println("Usage: openid-client \n" +
-			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaiant server. Create a service provider/application in the OIDC server with call back url:\n" +
+			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:\n" +
 			"       http://localhost:<port>/callback and set below flags to get an ID token\n" +
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
@@ -40,9 +40,11 @@ func main() {
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
-			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials\n" +
+			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
+			"      -username         User name for command password grant required, else optional.\n" +
+			"      -password         User password for command password grant required, else optional.\n" +
 			"      -h                Show this help for more details.")
 	}
 
@@ -52,7 +54,7 @@ func main() {
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
-	var refreshExpiry = flag.String("refresh_expiry", "", "Value in secondes to reduce Refresh Token Lifetime")
+	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
 	var idpScopeParameter = flag.String("idp_scope", "", "Request scope parameter in OIDC IdP token")
@@ -62,6 +64,8 @@ func main() {
 	var clientJwtKey = flag.String("client_jwt_key", "", "Private Key signing the client JWT for private_key_jwt authentication")
 	var clientJwtKid = flag.String("client_jwt_kid", "", "Key ID of client JWT for private_key_jwt authentication")
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
+	var userName = flag.String("username", "", "User name for command password grant required, else optional")
+	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
@@ -222,8 +226,24 @@ func main() {
 	}
 
 	if *command != "" {
+		if *scopeParameter != "" {
+			requestMap.Set("scope", *scopeParameter)
+		}
+		if *refreshExpiry != "" {
+			requestMap.Set("refresh_expiry", *refreshExpiry)
+		}
 		if *command == "client_credentials" {
 			client.HandleClientCredential(requestMap, *provider, *tlsClient, verbose)
+		} else if *command == "password" {
+			if *userName == "" {
+				log.Fatal("username is required to run this command")
+			}
+			requestMap.Set("username", *userName)
+			if *userPassword == "" {
+				log.Fatal("password is required to run this command")
+			}
+			requestMap.Set("password", *userPassword)
+			client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
 		} else if *command == "jwks" {
 		}
 	} else {

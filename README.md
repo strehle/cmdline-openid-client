@@ -1,7 +1,7 @@
  # SAP IAS openid-commandline-client
-This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaiant server, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Maily for IAS complaince tests. However any other OIDC provider can be used to get tokens.
+This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaint serverr, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
 
-The execution will open a port on you localhost machine. Please ensure that this port is usable. In additon, you need to specify the redirect_uri in your OIDC server,
+The execution will open a port on you localhost machine. Please ensure that this port is usable. In addition, you need to specify the redirect_uri in your OIDC server,
 e.g. http://localhost:8080/callback. If you set port 9002, expect redirect_uri http://localhost:9002/callback
 
 ### How to build the project
@@ -10,7 +10,7 @@ Use the go tool chain to build the binary.
 ```text
 go build cmd/openid-client.go
 ```
-on a OS with make environment, simply execute
+On an OS with make environment, simply execute
 ```text
 make
 ```
@@ -18,7 +18,7 @@ make
 ```text
 ./openid-client -h
 Usage: openid-client
-       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaiant server. Create a service provider/application in the OIDC server with call back url:
+       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
 Flags:
       -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token

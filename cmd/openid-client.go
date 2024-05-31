@@ -23,7 +23,7 @@ import (
 func main() {
 	flag.Usage = func() {
 		fmt.Println("Usage: openid-client \n" +
-			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaiant server. Create a service provider/application in the OIDC server with call back url:\n" +
+			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:\n" +
 			"       http://localhost:<port>/callback and set below flags to get an ID token\n" +
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
@@ -54,7 +54,7 @@ func main() {
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
-	var refreshExpiry = flag.String("refresh_expiry", "", "Value in secondes to reduce Refresh Token Lifetime")
+	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
 	var idpScopeParameter = flag.String("idp_scope", "", "Request scope parameter in OIDC IdP token")

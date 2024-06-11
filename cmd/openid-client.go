@@ -16,14 +16,28 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"software.sslmate.com/src/go-pkcs12"
+	"strings"
+)
+
+var (
+	version = "dev"
+	commit  = "0"
+	date    = "unknown"
 )
 
 func main() {
 	flag.Usage = func() {
-		fmt.Println("Usage: openid-client \n" +
+		fmt.Println("Usage: openid-client <command> <flags>\n" +
 			"       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:\n" +
 			"       http://localhost:<port>/callback and set below flags to get an ID token\n" +
+			"\nCommand: (authorization_code is default)\n" +
+			"       authorization_code Perform authorization code flow.\n" +
+			"       client_credentials Perform client credentials flow.\n" +
+			"       password           Perform resource owner flow, also known as password flow.\n" +
+			"       help               Show this help for more details.\n" +
+			"\n" +
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
@@ -32,7 +46,7 @@ func main() {
 			"      -client_jwt       P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
 			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
 			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
-			"      -client_jwt_x5t   X5T Header for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
@@ -68,14 +82,32 @@ func main() {
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
-	flag.Parse()
-	if *command == "jwks" {
-		*issEndPoint = "https://accounts.sap.com"
+	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
+		flag.CommandLine.Parse(os.Args[2:])
+		*command = os.Args[1]
 	} else {
-		if *clientID == "" {
-			log.Fatal("client_id is required to run this command")
-		} else if *issEndPoint == "" {
+		flag.CommandLine.Parse(os.Args[1:])
+	}
+	switch *command {
+	case "jwks":
+		*issEndPoint = "https://accounts.sap.com"
+	case "help":
+		flag.Usage()
+		return
+	case "version":
+		fmt.Println("openid-client version:", version, "commit:", commit, "built at:", date)
+		return
+	case "client_credentials", "password", "":
+	case "authorization_code":
+		*command = "" /* default command */
+	default:
+		log.Fatal("Invalid command, see usage (-h)")
+	}
+	if *command != "jwks" {
+		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
+		} else if *clientID == "" {
+			log.Fatal("client_id is required to run this command")
 		}
 	}
 	var callbackURL = "http://localhost:" + *portParameter + "/callback"

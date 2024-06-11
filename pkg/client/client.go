@@ -11,7 +11,11 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/akshaybabloo/pkce"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/oauth2"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,11 +26,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/akshaybabloo/pkce"
-	oidc "github.com/coreos/go-oidc"
-	"github.com/google/uuid"
-	"golang.org/x/oauth2"
 )
 
 type callbackEndpoint struct {

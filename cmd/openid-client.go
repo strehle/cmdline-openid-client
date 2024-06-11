@@ -17,6 +17,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/strehle/cmdline-openid-client/pkg/client"
 	"golang.org/x/net/context"
+	_ "gopkg.in/go-jose/go-jose.v2"
 	"software.sslmate.com/src/go-pkcs12"
 )
 

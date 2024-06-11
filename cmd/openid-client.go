@@ -16,7 +16,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"software.sslmate.com/src/go-pkcs12"
+	"strings"
 )
 
 var (

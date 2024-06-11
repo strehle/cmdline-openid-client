@@ -12,7 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/akshaybabloo/pkce"
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"

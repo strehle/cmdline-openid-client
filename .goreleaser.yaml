@@ -12,6 +12,8 @@ builds:
     id: "openid-client"
     dir: .
     main: ./cmd/openid-client.go
+    ldflags:
+      - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}'
     goos:
       - linux
       - windows

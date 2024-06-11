@@ -3,13 +3,12 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	oidc "github.com/coreos/go-oidc"
 )
 
 func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) map[string]interface{} {

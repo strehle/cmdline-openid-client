@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/akshaybabloo/pkce v1.0.2
-	github.com/coreos/go-oidc/v3 v3.10.0
+	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.0

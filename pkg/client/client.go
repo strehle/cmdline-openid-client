@@ -63,7 +63,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -152,6 +152,9 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	vals.Set("client_id", clientID)
 	if clientSecret != "" {
 		vals.Set("client_secret", clientSecret)
+	}
+	if appTid != "" {
+		vals.Set("app_tid", appTid)
 	}
 	if refreshExpiry != "" {
 		vals.Set("refresh_expiry", refreshExpiry)
@@ -258,7 +261,7 @@ func HandleOpenIDFlow(clientID, clientSecret, callbackURL string, scopeParameter
 	return idToken, refreshToken
 }
 
-func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, provider oidc.Provider) string {
+func HandleRefreshFlow(clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, provider oidc.Provider) string {
 	refreshToken := ""
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -273,6 +276,9 @@ func HandleRefreshFlow(clientID string, clientSecret string, existingRefresh str
 	vals.Set("client_id", clientID)
 	if clientSecret != "" {
 		vals.Set("client_secret", clientSecret)
+	}
+	if appTid != "" {
+		vals.Set("app_tid", appTid)
 	}
 	if refreshExpiry != "" {
 		vals.Set("refresh_expiry", refreshExpiry)

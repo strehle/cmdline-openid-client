@@ -39,6 +39,7 @@ func main() {
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
+			"      -app_tid          Optional parameter for IAS multi-tenant applications.\n" +
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
@@ -65,6 +66,7 @@ func main() {
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
+	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
@@ -220,6 +222,9 @@ func main() {
 		requestMap.Set("token_format", *tokenFormatParameter)
 		verbose = false
 	}
+	if *appTid != "" {
+		requestMap.Set("app_tid", *appTid)
+	}
 	if *refreshExpiry != "" {
 		requestMap.Set("refresh_expiry", *refreshExpiry)
 	}
@@ -246,13 +251,13 @@ func main() {
 		} else if *command == "jwks" {
 		}
 	} else {
-		var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *appTid, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {
 			if refreshToken == "" {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh = client.HandleRefreshFlow(*clientID, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *provider)
+			var newRefresh = client.HandleRefreshFlow(*clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *provider)
 			log.Println("Old refresh token: " + refreshToken)
 			log.Println("New refresh token: " + newRefresh)
 		}

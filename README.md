@@ -17,9 +17,16 @@ make
 ### How to test
 ```text
 ./openid-client -h
-Usage: openid-client
+Usage: openid-client <command> <flags>
        This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
+
+Command: (authorization_code is default)
+       authorization_code Perform authorization code flow.
+       client_credentials Perform client credentials flow.
+       password           Perform resource owner flow, also known as password flow.
+       help               Show this help for more details.
+
 Flags:
       -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
       -client_id        OIDC client ID. This is a mandatory flag.
@@ -28,17 +35,18 @@ Flags:
       -client_jwt       P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.
       -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.
       -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
-      -client_jwt_x5t   X5T Header for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
+      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
       -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
       -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
       -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
       -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
+      -app_tid          Optional parameter for IAS multi-tenant applications.
       -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password
       -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt
       -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080
       -username         User name for command password grant required, else optional.
       -password         User password for command password grant required, else optional.
-      -h                Show this help
+      -h                Show this help for more details.
 ```

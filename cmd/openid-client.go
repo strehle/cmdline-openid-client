@@ -36,6 +36,7 @@ func main() {
 			"       authorization_code Perform authorization code flow.\n" +
 			"       client_credentials Perform client credentials flow.\n" +
 			"       password           Perform resource owner flow, also known as password flow.\n" +
+			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
 			"Flags:\n" +
@@ -80,6 +81,7 @@ func main() {
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
+	var doVersion = flag.Bool("version", false, "Show version")
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var mTLS bool = false
@@ -97,7 +99,7 @@ func main() {
 		flag.Usage()
 		return
 	case "version":
-		fmt.Println("openid-client version:", version, "commit:", commit, "built at:", date)
+		showVersion()
 		return
 	case "client_credentials", "password", "":
 	case "authorization_code":
@@ -106,6 +108,10 @@ func main() {
 		log.Fatal("Invalid command, see usage (-h)")
 	}
 	if *command != "jwks" {
+		if *doVersion {
+			showVersion()
+			return
+		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {
@@ -307,5 +313,13 @@ func main() {
 			fmt.Println("Response from endpoint /exchange/corporateidp")
 			fmt.Println(string(data))
 		}
+	}
+}
+
+func showVersion() {
+	if date != "" && date != "unknown" {
+		fmt.Println("openid-client version:", version, "commit:", commit, "built at:", date)
+	} else {
+		fmt.Println("openid-client version:", version, "commit:", commit)
 	}
 }

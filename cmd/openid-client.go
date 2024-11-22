@@ -59,6 +59,8 @@ func main() {
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -username         User name for command password grant required, else optional.\n" +
 			"      -password         User password for command password grant required, else optional.\n" +
+			"      -requested_type   Token-Exchange requested type.\n" +
+			"      -provider_name    Provider name for token-exchange.\n" +
 			"      -h                Show this help for more details.")
 	}
 
@@ -82,6 +84,8 @@ func main() {
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
+	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
+	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
@@ -306,6 +310,18 @@ func main() {
 			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
 			fmt.Println("Response from endpoint /exchange/corporateidp")
 			fmt.Println(string(data))
+		}
+		if *requestedType != "" && idToken != "" {
+			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+			requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:id_token")
+			requestMap.Set("subject_token", idToken)
+			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
+			if *providerName != "" {
+				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
+			}
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
+			fmt.Println("Response from token-exchange endpoint ")
+			fmt.Println(exchangedTokenResponse)
 		}
 	}
 }

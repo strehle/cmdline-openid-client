@@ -36,6 +36,8 @@ func main() {
 			"       authorization_code Perform authorization code flow.\n" +
 			"       client_credentials Perform client credentials flow.\n" +
 			"       password           Perform resource owner flow, also known as password flow.\n" +
+			"       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).\n" +
+			"       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -48,6 +50,7 @@ func main() {
 			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
 			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
@@ -58,10 +61,14 @@ func main() {
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
+			"      -login_hint       Request parameter login_hint passed to the Corporate IdP.\n" +
 			"      -username         User name for command password grant required, else optional.\n" +
 			"      -password         User password for command password grant required, else optional.\n" +
+			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
+			"      -k                Skip TLS server certificate verification.\n" +
+			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
 	}
 
@@ -69,6 +76,7 @@ func main() {
 	var clientID = flag.String("client_id", "", "OIDC client ID")
 	var clientSecret = flag.String("client_secret", "", "OIDC client secret")
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
+	var isVerbose = flag.Bool("v", false, "Show more details about calls")
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
@@ -83,11 +91,15 @@ func main() {
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
+	var loginHint = flag.String("login_hint", "", "Parameter login_hint")
 	var doVersion = flag.Bool("version", false, "Show version")
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
+	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
+	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
+	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
@@ -105,7 +117,7 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "password", "":
+	case "client_credentials", "password", "token-exchange", "jwt-bearer", "":
 	case "authorization_code":
 		*command = "" /* default command */
 	default:
@@ -139,7 +151,7 @@ func main() {
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: *skipTlsVerification,
 			},
 		},
 	}
@@ -259,16 +271,18 @@ func main() {
 		requestMap.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
-	var verbose = true
+	var verbose = *isVerbose
 	if *tokenFormatParameter != "" {
 		requestMap.Set("token_format", *tokenFormatParameter)
-		verbose = false
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)
 	}
 	if *refreshExpiry != "" {
 		requestMap.Set("refresh_expiry", *refreshExpiry)
+	}
+	if *loginHint != "" {
+		requestMap.Set("login_hint", *loginHint)
 	}
 
 	if *command != "" {
@@ -290,18 +304,47 @@ func main() {
 			}
 			requestMap.Set("password", *userPassword)
 			client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
+		} else if *command == "token-exchange" {
+			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+			if *assertionToken == "" {
+				log.Fatal("assertion parameter not set. Needed to pass it to subject_token for token-exchange")
+			}
+			requestMap.Set("subject_token", *assertionToken)
+			if *subjectType == "" {
+				log.Fatal("subject_type parameter not set. Supported parameters for token-exchange are, id_token, access_token, refresh_token, jwt")
+			}
+			requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:"+*subjectType)
+			if *requestedType == "" {
+				log.Fatal("assertion parameter not set. Needed to pass it to subject_token for token-exchange")
+			}
+			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
+			if *providerName != "" {
+				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
+			}
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
+			fmt.Println(exchangedTokenResponse)
+		} else if *command == "jwt-bearer" {
+			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+			if *assertionToken == "" {
+				log.Fatal("assertion parameter not set. Needed to pass it for JWT bearer")
+			}
+			requestMap.Set("assertion", *assertionToken)
+			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, *provider, *tlsClient, verbose)
+			fmt.Println(jwtBearerTokenResponse)
 		} else if *command == "jwks" {
 		}
 	} else {
-		var idToken, refreshToken = client.HandleOpenIDFlow(*clientID, *appTid, *clientSecret, callbackURL, *scopeParameter, *refreshExpiry, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {
 			if refreshToken == "" {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh = client.HandleRefreshFlow(*clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *provider)
-			log.Println("Old refresh token: " + refreshToken)
-			log.Println("New refresh token: " + newRefresh)
+			var newRefresh = client.HandleRefreshFlow(*clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *skipTlsVerification, *provider)
+			if verbose {
+				log.Println("Old refresh token: " + refreshToken)
+				log.Println("New refresh token: " + newRefresh)
+			}
 		}
 		if *doCorpIdpTokenExchange {
 			if idToken == "" {
@@ -314,7 +357,9 @@ func main() {
 			}
 			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, *provider, *tlsClient)
 			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
-			fmt.Println("Response from endpoint /exchange/corporateidp")
+			if verbose {
+				fmt.Println("Response from endpoint /exchange/corporateidp")
+			}
 			fmt.Println(string(data))
 		}
 		if *requestedType != "" && idToken != "" {
@@ -326,7 +371,6 @@ func main() {
 				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 			}
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
-			fmt.Println("Response from token-exchange endpoint ")
 			fmt.Println(exchangedTokenResponse)
 		}
 	}

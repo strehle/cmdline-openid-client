@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"net/http"
@@ -55,4 +56,84 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 		log.Fatal(string(bodyBytes))
 	}
 	return outBodyMap
+}
+
+func HandleTokenExchangeGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+	accessToken := ""
+	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		jsonStr, marshalError := json.Marshal(result)
+		if marshalError != nil {
+			log.Fatal(marshalError)
+		}
+		var myToken oauth2.Token
+		json.Unmarshal([]byte(jsonStr), &myToken)
+		if myToken.AccessToken == "" {
+			fmt.Println(string(jsonStr))
+		} else {
+			if verbose {
+				fmt.Println("Response from token-exchange endpoint ")
+				ShowJSonResponse(result, verbose)
+			}
+			accessToken = myToken.AccessToken
+		}
+	}
+	return accessToken
+}
+
+func HandleJwtBearerGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+	accessToken := ""
+	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		jsonStr, marshalError := json.Marshal(result)
+		if marshalError != nil {
+			log.Fatal(marshalError)
+		}
+		var myToken oauth2.Token
+		json.Unmarshal([]byte(jsonStr), &myToken)
+		if myToken.AccessToken == "" {
+			fmt.Println(string(jsonStr))
+		} else {
+			if verbose {
+				fmt.Println("Response from JWT bearer endpoint ")
+				ShowJSonResponse(result, verbose)
+			}
+			accessToken = myToken.AccessToken
+		}
+	}
+	return accessToken
+}
+
+func ShowJSonResponse(result map[string]interface{}, verbose bool) {
+	fmt.Println("==========")
+	resultJson, _ := json.MarshalIndent(result, "", "    ")
+	if verbose {
+		fmt.Println("OIDC Response Body")
+	}
+	fmt.Println(string(resultJson))
+	fmt.Println("==========")
 }

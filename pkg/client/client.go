@@ -63,10 +63,11 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeParameter string, refreshExpiry string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
+	clientID := request.Get("client_id")
 	authrizationScope := "openid"
 	callbackEndpoint := &callbackEndpoint{}
 	callbackEndpoint.shutdownSignal = make(chan string)
@@ -109,6 +110,9 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 	query.Set("code_challenge_method", "S256")
 	query.Set("redirect_uri", callbackURL)
 	query.Set("state", endsession+"?client_id="+clientID)
+	if request.Has("login_hint") {
+		query.Set("login_hint", request.Get("login_hint"))
+	}
 	authzURL.RawQuery = query.Encode()
 
 	//cmd := exec.Command("open", authzURL.String())
@@ -139,9 +143,10 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 
 	<-callbackEndpoint.shutdownSignal
 	callbackEndpoint.server.Shutdown(context.Background())
-	fmt.Println("")
-	fmt.Println("Authorization code is ", callbackEndpoint.code)
-
+	if verbose {
+		fmt.Println("")
+		fmt.Println("Authorization code is ", callbackEndpoint.code)
+	}
 	vals := url.Values{}
 	vals.Set("grant_type", "authorization_code")
 	vals.Set("code", callbackEndpoint.code)
@@ -150,14 +155,14 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 	vals.Set("token_format", tokenFormatParameter)
 	//vals.Set("code_verifier", "01234567890123456789012345678901234567890123456789")
 	vals.Set("client_id", clientID)
-	if clientSecret != "" {
-		vals.Set("client_secret", clientSecret)
+	if request.Has("client_secret") {
+		vals.Set("client_secret", request.Get("client_secret"))
 	}
-	if appTid != "" {
-		vals.Set("app_tid", appTid)
+	if request.Has("app_tid") {
+		vals.Set("app_tid", request.Get("app_tid"))
 	}
-	if refreshExpiry != "" {
-		vals.Set("refresh_expiry", refreshExpiry)
+	if request.Has("refresh_expiry") {
+		vals.Set("refresh_expiry", request.Get("refresh_expiry"))
 	}
 	if privateKeyJwt != "" {
 		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
@@ -184,7 +189,9 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 		var outBodyMap map[string]interface{}
 		json.Unmarshal(result, &outBodyMap)
 		resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
-		fmt.Println("OIDC Response Body")
+		if verbose {
+			fmt.Println("OIDC Response Body")
+		}
 		fmt.Println(string(resultJson))
 		fmt.Println("==========")
 
@@ -210,46 +217,48 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 			// refresh token
 			stanardToken.RefreshToken = myToken.RefreshToken
 			refreshToken = myToken.RefreshToken
-			// Getting now the userInfo
-			fmt.Println("Call now UserInfo with access_token")
-			userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
-			if err != nil {
-				log.Fatal(err)
-				return "", ""
-			}
-			oidcConfig := &oidc.Config{
-				ClientID: clientID,
-			}
-			idToken, err := provider.Verifier(oidcConfig).Verify(context.TODO(), myToken.IdToken)
-			if err != nil {
-				log.Fatal(err)
-				return "", ""
-			}
+			if verbose {
+				// Getting now the userInfo
+				fmt.Println("Call now UserInfo with access_token")
+				userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
+				if err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
+				oidcConfig := &oidc.Config{
+					ClientID: clientID,
+				}
+				idToken, err := provider.Verifier(oidcConfig).Verify(context.TODO(), myToken.IdToken)
+				if err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
 
-			var outProfile map[string]interface{}
-			var outUserInfo map[string]interface{}
-			if err := idToken.Claims(&outProfile); err != nil {
-				log.Fatal(err)
-				return "", ""
+				var outProfile map[string]interface{}
+				var outUserInfo map[string]interface{}
+				if err := idToken.Claims(&outProfile); err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
+				if err := userInfo.Claims(&outUserInfo); err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
+				data, err := json.MarshalIndent(outProfile, "", "    ")
+				if err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
+				data2, err := json.MarshalIndent(outUserInfo, "", "    ")
+				if err != nil {
+					log.Fatal(err)
+					return "", ""
+				}
+				fmt.Println("Claims parsed out from id_token ")
+				fmt.Println(string(data))
+				fmt.Println("Claims returned from request to userinfo endpoint ")
+				fmt.Println(string(data2))
 			}
-			if err := userInfo.Claims(&outUserInfo); err != nil {
-				log.Fatal(err)
-				return "", ""
-			}
-			data, err := json.MarshalIndent(outProfile, "", "    ")
-			if err != nil {
-				log.Fatal(err)
-				return "", ""
-			}
-			data2, err := json.MarshalIndent(outUserInfo, "", "    ")
-			if err != nil {
-				log.Fatal(err)
-				return "", ""
-			}
-			fmt.Println("Claims parsed out from id_token ")
-			fmt.Println(string(data))
-			fmt.Println("Claims returned from request to userinfo endpoint ")
-			fmt.Println(string(data2))
 		}
 	} else {
 		if resp.StatusCode != 200 {
@@ -261,12 +270,12 @@ func HandleOpenIDFlow(clientID, appTid, clientSecret, callbackURL string, scopeP
 	return idToken, refreshToken
 }
 
-func HandleRefreshFlow(clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, provider oidc.Provider) string {
+func HandleRefreshFlow(clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, skipTlsVerification bool, provider oidc.Provider) string {
 	refreshToken := ""
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: skipTlsVerification,
 			},
 		},
 	}

@@ -10,7 +10,17 @@ e.g. http://localhost:8080/callback. If you set port 9002, expect redirect_uri h
 
 Use the go tool chain to build the binary.
 ```text
-go build cmd/openid-client.go
+go install github.com/strehle/cmdline-openid-client/openid-client@latest
+```
+
+You can also use go with run to execute it like
+```text
+go run github.com/strehle/cmdline-openid-client/openid-client@latest
+```
+
+Another option is to clone the sources and build it from command 
+```text
+go build openid-client/openid-client.go
 ```
 On an OS with make environment, simply execute
 ```text

@@ -1,3 +1,3 @@
 all:
-	go build cmd/openid-client.go
+	go build -o ~/openid-client openid-client/openid-client.go
 

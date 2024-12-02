@@ -38,6 +38,7 @@ func main() {
 			"       password           Perform resource owner flow, also known as password flow.\n" +
 			"       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).\n" +
 			"       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.\n" +
+			"       passcode           Retrieve user passcode from X509 user authentication.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -62,6 +63,7 @@ func main() {
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -login_hint       Request parameter login_hint passed to the Corporate IdP.\n" +
+			"      -user_tls         P12 file for user mTLS authentication. The parameter is needed for the passcode command.\n" +
 			"      -username         User name for command password grant required, else optional.\n" +
 			"      -password         User password for command password grant required, else optional.\n" +
 			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
@@ -91,6 +93,7 @@ func main() {
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
+	var userPkcs12 = flag.String("user_tls", "", "PKCS12 file for user mTLS authentication using passcode command")
 	var loginHint = flag.String("login_hint", "", "Parameter login_hint")
 	var doVersion = flag.Bool("version", false, "Show version")
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
@@ -118,6 +121,8 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "password", "token-exchange", "jwt-bearer", "":
+	case "passcode":
+		*clientID = "T000000" /* default */
 	case "authorization_code":
 		*command = "" /* default command */
 	default:
@@ -132,6 +137,8 @@ func main() {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {
 			log.Fatal("client_id is required to run this command")
+		} else if *clientPkcs12 != "" && *userPkcs12 != "" {
+			log.Fatal("client and user TLS cannot be used in parallel")
 		}
 	}
 	var callbackURL = "http://localhost:" + *portParameter + "/callback"
@@ -156,9 +163,11 @@ func main() {
 		},
 	}
 
-	if (*clientPkcs12 != "" || *clientJwtPkcs12 != "") && *pin != "" {
-		if *clientPkcs12 == "" {
+	if (*clientPkcs12 != "" || *clientJwtPkcs12 != "" || *userPkcs12 != "") && *pin != "" {
+		if *clientPkcs12 == "" && *clientJwtPkcs12 != "" {
 			clientPkcs12 = clientJwtPkcs12
+		} else if *clientPkcs12 == "" && *userPkcs12 != "" && *clientJwtPkcs12 == "" {
+			clientPkcs12 = userPkcs12
 		}
 		p12Data, readerror := ioutil.ReadFile(*clientPkcs12)
 		if readerror != nil {
@@ -331,6 +340,15 @@ func main() {
 			requestMap.Set("assertion", *assertionToken)
 			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, *provider, *tlsClient, verbose)
 			fmt.Println(jwtBearerTokenResponse)
+		} else if *command == "passcode" {
+			if *issEndPoint == "" || !strings.HasPrefix(*issEndPoint, "https://") {
+				log.Fatal("issuer with https schema is required to run this command")
+			}
+			if *userPkcs12 == "" {
+				log.Fatal("user_tls parameter is required in order to execute passcode")
+			}
+			var passcode = client.HandlePasscode(*issEndPoint, *tlsClient, verbose)
+			fmt.Println(passcode)
 		} else if *command == "jwks" {
 		}
 	} else {

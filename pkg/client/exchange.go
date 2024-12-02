@@ -137,3 +137,35 @@ func ShowJSonResponse(result map[string]interface{}, verbose bool) {
 	fmt.Println(string(resultJson))
 	fmt.Println("==========")
 }
+
+func HandlePasscode(issuer string, tlsClient http.Client, verbose bool) string {
+	passcode := ""
+	passcodeUrl := issuer + "/service/users/passcode"
+	req, requestError := http.NewRequest("GET", passcodeUrl, nil)
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		if val, ok := result["passcode"]; ok {
+			passcode = val.(string)
+			if verbose {
+				fmt.Println("Response from Passcode endpoint ")
+				ShowJSonResponse(result, verbose)
+			}
+		} else {
+			jsonStr, marshalError := json.Marshal(result)
+			if marshalError != nil {
+				log.Fatal(marshalError)
+			}
+			fmt.Println(string(jsonStr))
+		}
+	}
+	return passcode
+}

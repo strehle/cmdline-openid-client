@@ -1,5 +1,6 @@
- # SAP IAS openid-commandline-client
+ # SAP Cloud Identity Services - openid-commandline-client
 This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaint serverr, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
+The API documentation is available here: https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/openid-connect  
 
 The execution will open a port on you localhost machine. Please ensure that this port is usable. In addition, you need to specify the redirect_uri in your OIDC server,
 e.g. http://localhost:8080/callback. If you set port 9002, expect redirect_uri http://localhost:9002/callback
@@ -16,7 +17,6 @@ make
 ```
 ### How to test
 ```text
-./openid-client -h
 Usage: openid-client <command> <flags>
        This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
@@ -25,6 +25,10 @@ Command: (authorization_code is default)
        authorization_code Perform authorization code flow.
        client_credentials Perform client credentials flow.
        password           Perform resource owner flow, also known as password flow.
+       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).
+       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.
+       passcode           Retrieve user passcode from X509 user authentication.
+       version            Show version.
        help               Show this help for more details.
 
 Flags:
@@ -36,6 +40,7 @@ Flags:
       -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.
       -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
       -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
+      -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
       -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
@@ -46,7 +51,14 @@ Flags:
       -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password
       -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt
       -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080
+      -login_hint       Request parameter login_hint passed to the Corporate IdP.
+      -user_tls         P12 file for user mTLS authentication. The parameter is needed for the passcode command.
       -username         User name for command password grant required, else optional.
       -password         User password for command password grant required, else optional.
+      -subject_type     Token-Exchange subject type. Type of input assertion.
+      -requested_type   Token-Exchange requested type.
+      -provider_name    Provider name for token-exchange.
+      -k                Skip TLS server certificate verification.
+      -v                Verbose. Show more details about calls.
       -h                Show this help for more details.
 ```

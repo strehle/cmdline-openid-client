@@ -1,4 +1,5 @@
- # SAP Cloud Identity Services - openid-commandline-client
+ # SAP Cloud Identity Services - openid-client
+ 
 This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaint serverr, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
 The API documentation is available here: https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/openid-connect  
 

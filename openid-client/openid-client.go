@@ -67,6 +67,7 @@ func main() {
 			"      -username         User name for command password grant required, else optional.\n" +
 			"      -password         User password for command password grant required, else optional.\n" +
 			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
+			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
 			"      -k                Skip TLS server certificate verification.\n" +
@@ -102,6 +103,7 @@ func main() {
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
+	var resourceParam = flag.String("resource", "", "Additional resource")
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
@@ -321,14 +323,27 @@ func main() {
 			requestMap.Set("subject_token", *assertionToken)
 			if *subjectType == "" {
 				log.Fatal("subject_type parameter not set. Supported parameters for token-exchange are, id_token, access_token, refresh_token, jwt")
+			} else {
+				if strings.Contains(*subjectType, "saml2-session") || strings.Contains(*subjectType, "saml-session") {
+					requestMap.Set("subject_token_type", "urn:sap:identity:oauth:token-type:saml2-session")
+				} else {
+					requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:"+*subjectType)
+				}
 			}
-			requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:"+*subjectType)
 			if *requestedType == "" {
 				log.Fatal("assertion parameter not set. Needed to pass it to subject_token for token-exchange")
+			} else {
+				if strings.Contains(*requestedType, "saml2-header") || strings.Contains(*requestedType, "saml-header") {
+					requestMap.Set("requested_token_type", "urn:sap:identity:oauth:token-type:saml2-header")
+				} else {
+					requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
+				}
 			}
-			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
 			if *providerName != "" {
 				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
+			}
+			if *resourceParam != "" {
+				requestMap.Add("resource", *resourceParam)
 			}
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
@@ -384,10 +399,18 @@ func main() {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 			requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:id_token")
 			requestMap.Set("subject_token", idToken)
-			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
+			if strings.Contains(*requestedType, "saml2-header") || strings.Contains(*requestedType, "saml-header") {
+				requestMap.Set("requested_token_type", "urn:sap:identity:oauth:token-type:saml2-header")
+			} else {
+				requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
+			}
 			if *providerName != "" {
 				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 			}
+			if *resourceParam != "" {
+				requestMap.Add("resource", *resourceParam)
+			}
+
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
 		}

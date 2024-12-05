@@ -67,6 +67,7 @@ Flags:
       -username         User name for command password grant required, else optional.
       -password         User password for command password grant required, else optional.
       -subject_type     Token-Exchange subject type. Type of input assertion.
+      -resource         Token-Exchange custom resource parameter.
       -requested_type   Token-Exchange requested type.
       -provider_name    Provider name for token-exchange.
       -k                Skip TLS server certificate verification.

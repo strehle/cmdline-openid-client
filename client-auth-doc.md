@@ -27,8 +27,8 @@ openid-client -issuer <yourSCI> -client_id 11111111-your-client-11111111 -client
 
 In short, this term means a JWT created from a private key is used to authenticate a client. This standard has 2 approaches
 
-* OAuth2 with [RFC7523](https://www.rfc-editor.org/info/rfc7523), Supported in SAP Cloud Identity within client authentication, subsection "Trust by issuer". In EntraID section Certificates & secrets, tab Federated credentials. 
-* OIDC with client authentication method [private_key_jwt](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication), Supported in SAP Cloud Identity within client authentication, subsection "Trust by URI". In EntraID this is not supported (yet). Okta supports only this type.
+* OAuth2 with [RFC7523](https://www.rfc-editor.org/info/rfc7523), supported in SAP Cloud Identity within client authentication, subsection "Trust by issuer". In EntraID section Certificates & secrets, tab Federated credentials. 
+* OIDC with client authentication method [private_key_jwt](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication), supported in SAP Cloud Identity within client authentication, subsection "Trust by URI". In EntraID the JWKS_URI is not supported (yet), but only with X509 and x5t header. Okta supports only this type.
 
 Remark: This tool supports both private_key_jwt flavours. SAP Cloud Identity supports both standards. To know what your server supports is therefore
 important. In general OIDC includes OAuth2, therefore both standards are valid for an OIDC complaint server, but in real the creation of the used
@@ -89,9 +89,9 @@ OAuth2 servers more often support this client authentication.
 * Self-Signed/Self-created certificates can be used.
 * Flexible use in single clients.
 ##### Cons
-* There are not many clients which support this standard, therefore this tool was created for. Okta, KeyCloak supports it.
-* Only one trust is possible
-* 
+* There are not many tools or frameworks for developers which supports this, therefore this tool was created for. Okta, KeyCloak supports it.
+* Only one trust anchor is possible
+ 
 ### Howto Use the Private Key only for Private Key JWT
 
 1. Optional create key pairs and X509 certificate

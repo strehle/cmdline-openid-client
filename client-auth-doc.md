@@ -46,7 +46,7 @@ openid-client -issuer <yourSCI> -client_id 11111111-your-client-11111111 -client
 ```
 
 Remark:
-The openid-client tool can be used against SCI, EntraID or UAA. Instead of "yourSCI", use "https://login.microsoftonline.com/<your-tid-from-microsoft>/v2.0" or https://uaa.cf.landscape.org/oauth/token
+The openid-client tool can be used against SCI, EntraID or UAA. Instead of "yourSCI", use "https://login.microsoftonline.com/{your-tid-from-microsoft}/v2.0" or https://uaa.cf.landscape.org/oauth/token
 The token exchanges typically can be tested from SCI to EntraID/UAA or vice versa.
 
 ### Pro and Cons between both standards

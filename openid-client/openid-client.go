@@ -51,6 +51,7 @@ func main() {
 			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
 			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.\n" +
 			"      -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
@@ -92,6 +93,7 @@ func main() {
 	var clientJwtKey = flag.String("client_jwt_key", "", "Private Key signing the client JWT for private_key_jwt authentication")
 	var clientJwtKid = flag.String("client_jwt_kid", "", "Key ID of client JWT for private_key_jwt authentication")
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
+	var clientAssertion = flag.String("client_assertion", "", "Client assertion JWT for private_key_jwt authentication")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
 	var userPkcs12 = flag.String("user_tls", "", "PKCS12 file for user mTLS authentication using passcode command")
@@ -165,7 +167,12 @@ func main() {
 		},
 	}
 
-	if (*clientPkcs12 != "" || *clientJwtPkcs12 != "" || *userPkcs12 != "") && *pin != "" {
+	if *clientAssertion != "" {
+		if *clientJwtKey != "" || *clientJwtPkcs12 != "" {
+			log.Fatal("Invalid state. Provide parameter client_assertion without other private_key_jwt parameters")
+		}
+		privateKeyJwt = *clientAssertion
+	} else if (*clientPkcs12 != "" || *clientJwtPkcs12 != "" || *userPkcs12 != "") && *pin != "" {
 		if *clientPkcs12 == "" && *clientJwtPkcs12 != "" {
 			clientPkcs12 = clientJwtPkcs12
 		} else if *clientPkcs12 == "" && *userPkcs12 != "" && *clientJwtPkcs12 == "" {

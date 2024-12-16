@@ -56,22 +56,28 @@ is done in proxies or load balancers in front of the OAuth2/OIDC server. This is
 is then set into a header variable and transported to the authentication server. The termination component (proxy/load balancer) has no knowledge about
 the mappings but typically allow most often only CA signed certificates. This makes it hard to supported generic mTLS.
 
-In SAP Cloud Identity the applications allow to generate a P12 in section client authentication. These P12 files contain CA signed certificates and therefore they
+In SAP Cloud Identity the applications allow to generate a P12 in section client authentication. These P12 files contain CA signed certificates, and therefore they
 can be used with this tool. 
 
 #### mTLS
-
+The standard is not part of OIDC but only available in addition in RFC 8705.
 ##### Pro
 * Easy to support in client components, e.g. curl, client REST frameworks. They all support X509 authentication and therefore a setup on client side is easy.
 ##### Cons
 * CA signed certificates are needed. Customers can have their own CA and register then their CA, but this is extra effort.
+* OAuth2/OIDC server support can be complicated, because the real TLS termination is most often done in a gateway before, and the mapping
+from a X509 to a client is done based on HTTP header variables and content. This content and the header variable can differ. You need to establish a
+check for passing only mTLS verified calls to the OAuth2 server otherwise you will have a big security problem if you only rely on Unit tests or Mocks etc.
+
+#### Private Key JWT
+OAuth2 servers more often support this client authentication.
 
 #### Private Key JWT - OAuth2 (RFC7523) flavour
 
 ##### Pro
-* Support in EntraID, SAP Cloud Identity, UAA
 * Another client credential tokens can be used. No extra generation with tools like this here needed.
 * More than one trust anchor is possible.
+* Support in EntraID, SAP Cloud Identity, UAA.
 ##### Cons
 * The standard and configuration is much more complicated. 
 * The standard is defined for System-2-System communication only, not for single clients.

@@ -186,13 +186,10 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 
 	if resp.StatusCode == 200 && result != nil {
 		fmt.Println("==========")
-		var outBodyMap map[string]interface{}
-		json.Unmarshal(result, &outBodyMap)
-		resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
 		if verbose {
 			fmt.Println("OIDC Response Body")
 		}
-		fmt.Println(string(resultJson))
+		showHttpClientError(result)
 		fmt.Println("==========")
 
 		var jsonStr = result
@@ -263,6 +260,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	} else {
 		if resp.StatusCode != 200 {
 			log.Println("Not allowed - check if your client ", clientID, " is public. HTTP code ", resp.Status)
+			showHttpClientError(result)
 		} else {
 			log.Println("Error while getting ID token")
 		}
@@ -473,4 +471,11 @@ func fileExists(filename string) bool {
 func CalculateSha1ThumbPrint(x509Cert x509.Certificate) string {
 	certSum := sha1.Sum(x509Cert.Raw)
 	return base64.RawURLEncoding.EncodeToString(certSum[:])
+}
+
+func showHttpClientError(result []byte) {
+	var outBodyMap map[string]interface{}
+	json.Unmarshal(result, &outBodyMap)
+	resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
+	fmt.Println(string(resultJson))
 }

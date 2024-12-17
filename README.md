@@ -51,6 +51,7 @@ Flags:
       -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.
       -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
       -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
+      -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.
       -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.

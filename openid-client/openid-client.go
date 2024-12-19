@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"software.sslmate.com/src/go-pkcs12"
 	"strings"
 )
@@ -109,12 +110,14 @@ func main() {
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
 	var mTLS bool = false
 	var privateKeyJwt string = ""
+	var arguments []string
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
-		flag.CommandLine.Parse(os.Args[2:])
+		arguments = os.Args[2:]
 		*command = os.Args[1]
 	} else {
-		flag.CommandLine.Parse(os.Args[1:])
+		arguments = os.Args[1:]
 	}
+	flag.CommandLine.Parse(arguments)
 	switch *command {
 	case "jwks":
 		*issEndPoint = "https://accounts.sap.com"
@@ -284,6 +287,11 @@ func main() {
 	requestMap.Set("client_id", *clientID)
 	if *clientSecret != "" {
 		requestMap.Set("client_secret", *clientSecret)
+	} else {
+		// cf case with an empty secret
+		if slices.Contains(arguments, "-client_secret") || slices.Contains(arguments, "--client_secret") {
+			requestMap.Set("client_secret", "")
+		}
 	}
 	if privateKeyJwt != "" {
 		requestMap.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")

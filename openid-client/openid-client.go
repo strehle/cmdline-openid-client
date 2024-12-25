@@ -44,7 +44,7 @@ func main() {
 			"       help               Show this help for more details.\n" +
 			"\n" +
 			"Flags:\n" +
-			"      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
+			"      -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
 			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
 			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
@@ -108,8 +108,8 @@ func main() {
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
 	var resourceParam = flag.String("resource", "", "Additional resource")
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
-	var mTLS bool = false
-	var privateKeyJwt string = ""
+	var mTLS = false
+	var privateKeyJwt = ""
 	var arguments []string
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
 		arguments = os.Args[2:]
@@ -117,7 +117,10 @@ func main() {
 	} else {
 		arguments = os.Args[1:]
 	}
-	flag.CommandLine.Parse(arguments)
+	err := flag.CommandLine.Parse(arguments)
+	if err != nil {
+		log.Fatal(err)
+	}
 	switch *command {
 	case "jwks":
 		*issEndPoint = "https://accounts.sap.com"
@@ -181,10 +184,10 @@ func main() {
 		} else if *clientPkcs12 == "" && *userPkcs12 != "" && *clientJwtPkcs12 == "" {
 			clientPkcs12 = userPkcs12
 		}
-		p12Data, readerror := ioutil.ReadFile(*clientPkcs12)
-		if readerror != nil {
+		p12Data, readError := ioutil.ReadFile(*clientPkcs12)
+		if readError != nil {
 			log.Println("read pkcs12 failed")
-			log.Println(readerror)
+			log.Println(readError)
 			return
 		}
 		blocks, err := pkcs12.ToPEM(p12Data, *pin)
@@ -255,10 +258,10 @@ func main() {
 			log.Println(err)
 			return
 		}
-		pemKey, readerror := ioutil.ReadFile(*clientJwtKey)
-		if readerror != nil {
+		pemKey, readError := ioutil.ReadFile(*clientJwtKey)
+		if readError != nil {
 			log.Println("read private key failed")
-			log.Println(readerror)
+			log.Println(readError)
 			return
 		}
 		signKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemKey)
@@ -267,7 +270,7 @@ func main() {
 			log.Println(err)
 			return
 		}
-		var x5tValue string = ""
+		var x5tValue = ""
 		if *clientJwtKid != "" {
 			x5tValue, err = client.CalculateSha1FromX509(*clientJwtX5t)
 			if err != nil {

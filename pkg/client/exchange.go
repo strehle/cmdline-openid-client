@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 	"io"
 	"log"
@@ -12,7 +11,7 @@ import (
 	"strings"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) map[string]interface{} {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, tokenEndpoint string, tlsClient http.Client) map[string]interface{} {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
@@ -28,7 +27,7 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 
 	body := strings.NewReader(params.Encode())
 
-	tokenEndPoint := strings.Replace(provider.Endpoint().TokenURL, "/token", "/exchange/corporateidp", 1)
+	tokenEndPoint := strings.Replace(tokenEndpoint, "/token", "/exchange/corporateidp", 1)
 	fmt.Println("Call IdP Token Exchange Endpoint: " + tokenEndPoint)
 	req, err := http.NewRequest("POST", tokenEndPoint, body)
 	if err != nil {
@@ -58,10 +57,10 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	return outBodyMap
 }
 
-func HandleTokenExchangeGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
 	accessToken := ""
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
-	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -93,10 +92,10 @@ func HandleTokenExchangeGrant(request url.Values, provider oidc.Provider, tlsCli
 	return accessToken
 }
 
-func HandleJwtBearerGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
 	accessToken := ""
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
-	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -120,6 +119,41 @@ func HandleJwtBearerGrant(request url.Values, provider oidc.Provider, tlsClient 
 		} else {
 			if verbose {
 				fmt.Println("Response from JWT bearer endpoint ")
+				ShowJSonResponse(result, verbose)
+			}
+			accessToken = myToken.AccessToken
+		}
+	}
+	return accessToken
+}
+
+func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
+	accessToken := ""
+	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
+	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		jsonStr, marshalError := json.Marshal(result)
+		if marshalError != nil {
+			log.Fatal(marshalError)
+		}
+		var myToken oauth2.Token
+		json.Unmarshal([]byte(jsonStr), &myToken)
+		if myToken.AccessToken == "" {
+			fmt.Println(string(jsonStr))
+		} else {
+			if verbose {
+				fmt.Println("Response from SAML bearer endpoint ")
 				ShowJSonResponse(result, verbose)
 			}
 			accessToken = myToken.AccessToken

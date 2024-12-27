@@ -39,12 +39,14 @@ func main() {
 			"       password           Perform resource owner flow, also known as password flow.\n" +
 			"       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).\n" +
 			"       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.\n" +
+			"       saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.\n" +
 			"       passcode           Retrieve user passcode from X509 user authentication.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
+			"      -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
 			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
 			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
@@ -78,6 +80,7 @@ func main() {
 	}
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")
+	var urlEndPoint = flag.String("url", "", "Generic URL endpoint")
 	var clientID = flag.String("client_id", "", "OIDC client ID")
 	var clientSecret = flag.String("client_secret", "", "OIDC client secret")
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
@@ -117,9 +120,9 @@ func main() {
 	} else {
 		arguments = os.Args[1:]
 	}
-	err := flag.CommandLine.Parse(arguments)
-	if err != nil {
-		log.Fatal(err)
+	oidcError := flag.CommandLine.Parse(arguments)
+	if oidcError != nil {
+		log.Fatal(oidcError)
 	}
 	switch *command {
 	case "jwks":
@@ -130,7 +133,7 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "password", "token-exchange", "jwt-bearer", "":
+	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "":
 	case "passcode":
 		*clientID = "T000000" /* default */
 	case "authorization_code":
@@ -153,17 +156,25 @@ func main() {
 	}
 	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, *issEndPoint)
-	if err != nil {
-		log.Fatal(err)
-	}
 	var claims struct {
+		AuthorizeEndpoint  string `json:"authorization_endpoint"`
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 		TokenEndPoint      string `json:"token_endpoint"`
 	}
-	err = provider.Claims(&claims)
-	if err != nil {
-		log.Fatal(err)
+	provider, oidcError := oidc.NewProvider(ctx, *issEndPoint)
+	if oidcError != nil {
+		if *urlEndPoint != "" && *command != "" {
+			claims.TokenEndPoint = *urlEndPoint
+			claims.AuthorizeEndpoint = *urlEndPoint
+			claims.EndSessionEndpoint = ""
+		} else {
+			log.Fatal(oidcError)
+		}
+	} else {
+		oidcError = provider.Claims(&claims)
+		if oidcError != nil {
+			log.Fatal(oidcError)
+		}
 	}
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
@@ -363,7 +374,7 @@ func main() {
 			if *resourceParam != "" {
 				requestMap.Add("resource", *resourceParam)
 			}
-			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
 		} else if *command == "jwt-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
@@ -371,7 +382,15 @@ func main() {
 				log.Fatal("assertion parameter not set. Needed to pass it for JWT bearer")
 			}
 			requestMap.Set("assertion", *assertionToken)
-			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, *provider, *tlsClient, verbose)
+			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			fmt.Println(jwtBearerTokenResponse)
+		} else if *command == "saml-bearer" {
+			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
+			if *assertionToken == "" {
+				log.Fatal("assertion parameter not set. Needed to pass it for SAML bearer")
+			}
+			requestMap.Set("assertion", *assertionToken)
+			var jwtBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(jwtBearerTokenResponse)
 		} else if *command == "passcode" {
 			if *issEndPoint == "" || !strings.HasPrefix(*issEndPoint, "https://") {
@@ -406,7 +425,7 @@ func main() {
 				log.Fatal("client_secret is required to run this command")
 				return
 			}
-			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, *provider, *tlsClient)
+			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, claims.TokenEndPoint, *tlsClient)
 			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
 			if verbose {
 				fmt.Println("Response from endpoint /exchange/corporateidp")
@@ -429,7 +448,7 @@ func main() {
 				requestMap.Add("resource", *resourceParam)
 			}
 
-			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, *provider, *tlsClient, verbose)
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
 		}
 	}

@@ -310,6 +310,9 @@ func main() {
 	if *loginHint != "" {
 		requestMap.Set("login_hint", *loginHint)
 	}
+	if *resourceParam != "" {
+		requestMap.Set("resource", *resourceParam)
+	}
 
 	if *command != "" {
 		if *scopeParameter != "" {

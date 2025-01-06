@@ -38,12 +38,14 @@ Command: (authorization_code is default)
        password           Perform resource owner flow, also known as password flow.
        token-exchange     Perform OAuth2 Token Exchange (RFC 8693).
        jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.
+       saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.
        passcode           Retrieve user passcode from X509 user authentication.
        version            Show version.
        help               Show this help for more details.
 
 Flags:
-      -issuer           IAS. Default is https://<yourtenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
+      -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
+      -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.
       -client_id        OIDC client ID. This is a mandatory flag.
       -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.
       -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.

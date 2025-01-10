@@ -56,6 +56,7 @@ Flags:
       -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.
       -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
+      -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
       -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
       -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).

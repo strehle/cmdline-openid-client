@@ -113,6 +113,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	if request.Has("login_hint") {
 		query.Set("login_hint", request.Get("login_hint"))
 	}
+	if request.Has("nonce") {
+		query.Set("nonce", request.Get("nonce"))
+	}
 	authzURL.RawQuery = query.Encode()
 
 	//cmd := exec.Command("open", authzURL.String())

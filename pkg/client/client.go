@@ -323,7 +323,7 @@ func HandleRefreshFlow(clientID string, appTid string, clientSecret string, exis
 	return refreshToken
 }
 
-func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+func HandleClientCredential(request url.Values, bearerToken string, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
 	refreshToken := ""
 	request.Set("grant_type", "client_credentials")
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
@@ -332,6 +332,9 @@ func HandleClientCredential(request url.Values, provider oidc.Provider, tlsClien
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	if bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
+	}
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)

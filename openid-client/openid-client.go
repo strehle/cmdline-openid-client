@@ -329,8 +329,11 @@ func main() {
 	if *loginHint != "" {
 		requestMap.Set("login_hint", *loginHint)
 	}
+	if *providerName != "" {
+		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
+	}
 	if *resourceParam != "" {
-		requestMap.Set("resource", *resourceParam)
+		requestMap.Add("resource", *resourceParam)
 	}
 
 	if *command != "" {
@@ -375,12 +378,6 @@ func main() {
 				} else {
 					requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
 				}
-			}
-			if *providerName != "" {
-				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
-			}
-			if *resourceParam != "" {
-				requestMap.Add("resource", *resourceParam)
 			}
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)

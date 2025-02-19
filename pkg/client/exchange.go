@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, tokenEndpoint string, tlsClient http.Client) map[string]interface{} {
+func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, tokenEndpoint string, tlsClient http.Client) map[string]interface{} {
 
 	params := url.Values{}
 	params.Add("assertion", existingIdToken)
@@ -35,6 +35,8 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, existingIdT
 	}
 	if clientSecret != "" {
 		req.SetBasicAuth(clientID, clientSecret)
+	} else if bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")

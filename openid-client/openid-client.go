@@ -40,7 +40,8 @@ func main() {
 			"       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).\n" +
 			"       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.\n" +
 			"       saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.\n" +
-			"       passcode           Retrieve user passcode from X509 user authentication.\n" +
+			"       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.\n" +
+			"       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -55,7 +56,8 @@ func main() {
 			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
 			"      -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.\n" +
-			"      -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.\n" +
+			"      -bearer           Own token to perform client API authentication. The value will be set in authorization header as bearer value.\n" +
+			"      -assertion        Input token for token exchanges, e.g. jwt-bearer or token-exchange and other token information endpoints.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.\n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
@@ -100,6 +102,7 @@ func main() {
 	var clientJwtKid = flag.String("client_jwt_kid", "", "Key ID of client JWT for private_key_jwt authentication")
 	var clientJwtX5t = flag.String("client_jwt_x5t", "", "X5T Header in client JWT for private_key_jwt authentication")
 	var clientAssertion = flag.String("client_assertion", "", "Client assertion JWT for private_key_jwt authentication")
+	var bearerToken = flag.String("bearer", "", "The value will be set in authorization header as bearer value")
 	var userName = flag.String("username", "", "User name for command password grant required, else optional")
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
 	var userPkcs12 = flag.String("user_tls", "", "PKCS12 file for user mTLS authentication using passcode command")
@@ -135,7 +138,7 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "":
+	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "":
 	case "passcode":
 		*clientID = "T000000" /* default */
 	case "authorization_code":
@@ -326,8 +329,11 @@ func main() {
 	if *loginHint != "" {
 		requestMap.Set("login_hint", *loginHint)
 	}
+	if *providerName != "" {
+		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
+	}
 	if *resourceParam != "" {
-		requestMap.Set("resource", *resourceParam)
+		requestMap.Add("resource", *resourceParam)
 	}
 
 	if *command != "" {
@@ -338,7 +344,7 @@ func main() {
 			requestMap.Set("refresh_expiry", *refreshExpiry)
 		}
 		if *command == "client_credentials" {
-			client.HandleClientCredential(requestMap, *provider, *tlsClient, verbose)
+			client.HandleClientCredential(requestMap, *bearerToken, *provider, *tlsClient, verbose)
 		} else if *command == "password" {
 			if *userName == "" {
 				log.Fatal("username is required to run this command")
@@ -373,12 +379,6 @@ func main() {
 					requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
 				}
 			}
-			if *providerName != "" {
-				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
-			}
-			if *resourceParam != "" {
-				requestMap.Add("resource", *resourceParam)
-			}
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
 		} else if *command == "jwt-bearer" {
@@ -406,6 +406,21 @@ func main() {
 			}
 			var passcode = client.HandlePasscode(*issEndPoint, *tlsClient, verbose)
 			fmt.Println(passcode)
+		} else if *command == "idp_token" {
+			if *assertionToken == "" {
+				log.Println("No id_token token received.")
+				return
+			}
+			if *clientSecret == "" && mTLS == false && privateKeyJwt == "" && *bearerToken == "" {
+				log.Fatal("client_secret is required to run this command")
+				return
+			}
+			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, *bearerToken, *assertionToken, *idpScopeParameter, privateKeyJwt, claims.TokenEndPoint, *tlsClient)
+			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
+			if verbose {
+				fmt.Println("Response from endpoint /exchange/corporateidp")
+			}
+			fmt.Println(string(data))
 		} else if *command == "jwks" {
 		}
 	} else {
@@ -430,11 +445,11 @@ func main() {
 				log.Println("No id_token token received.")
 				return
 			}
-			if *clientSecret == "" && mTLS == false && privateKeyJwt == "" {
+			if *clientSecret == "" && mTLS == false && privateKeyJwt == "" && *bearerToken == "" {
 				log.Fatal("client_secret is required to run this command")
 				return
 			}
-			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, idToken, *idpScopeParameter, privateKeyJwt, claims.TokenEndPoint, *tlsClient)
+			var idpTokenResponse = client.HandleCorpIdpExchangeFlow(*clientID, *clientSecret, *bearerToken, idToken, *idpScopeParameter, privateKeyJwt, claims.TokenEndPoint, *tlsClient)
 			data, _ := json.MarshalIndent(idpTokenResponse, "", "    ")
 			if verbose {
 				fmt.Println("Response from endpoint /exchange/corporateidp")

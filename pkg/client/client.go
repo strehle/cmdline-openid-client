@@ -361,8 +361,8 @@ func HandleClientCredential(request url.Values, bearerToken string, provider oid
 	return refreshToken
 }
 
-func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
-	refreshToken := ""
+func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) OpenIdToken {
+	var oidctoken OpenIdToken
 	request.Set("grant_type", "password")
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
 	if requestError != nil {
@@ -381,7 +381,7 @@ func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient h
 		if marshalError != nil {
 			log.Fatal(marshalError)
 		}
-		var myToken oauth2.Token
+		var myToken OpenIdToken
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
@@ -392,10 +392,10 @@ func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient h
 			} else {
 				fmt.Println(myToken.AccessToken)
 			}
-			refreshToken = myToken.RefreshToken
+			oidctoken = myToken
 		}
 	}
-	return refreshToken
+	return oidctoken
 }
 
 func CreatePrivateKeyJwt(clientID string, x509Cert x509.Certificate, tokenEndpoint string, privateKey crypto.PrivateKey) (string, error) {

@@ -46,6 +46,7 @@ Command: (authorization_code is default)
 Flags:
       -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
       -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.
+      -cf               Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.
       -client_id        OIDC client ID. This is a mandatory flag.
       -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.
       -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.
@@ -54,7 +55,8 @@ Flags:
       -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
       -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.
       -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.
-      -assertion        Input token for token exchanges, e.g. jwt-bearer and token-exchange.
+      -bearer           Own token to perform client API authentication. The value will be set in authorization header as bearer value.
+      -assertion        Input token for token exchanges, e.g. jwt-bearer or token-exchange and other token information endpoints.
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
       -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
@@ -67,6 +69,7 @@ Flags:
       -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt
       -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080
       -login_hint       Request parameter login_hint passed to the Corporate IdP.
+      -origin           Use for UAA only. Create login_hint parameter for cf simulation calls.
       -user_tls         P12 file for user mTLS authentication. The parameter is needed for the passcode command.
       -username         User name for command password grant required, else optional.
       -password         User password for command password grant required, else optional.

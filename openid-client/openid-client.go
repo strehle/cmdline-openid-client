@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/strehle/cmdline-openid-client/pkg/cf"
 	"github.com/strehle/cmdline-openid-client/pkg/client"
 	"golang.org/x/net/context"
 	"io/ioutil"
@@ -48,6 +49,7 @@ func main() {
 			"Flags:\n" +
 			"      -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
 			"      -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.\n" +
+			"      -cf               Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.\n" +
 			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
 			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
 			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
@@ -70,6 +72,7 @@ func main() {
 			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
 			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
 			"      -login_hint       Request parameter login_hint passed to the Corporate IdP.\n" +
+			"      -origin           Use for UAA only. Create login_hint parameter for cf simulation calls.\n" +
 			"      -user_tls         P12 file for user mTLS authentication. The parameter is needed for the passcode command.\n" +
 			"      -username         User name for command password grant required, else optional.\n" +
 			"      -password         User password for command password grant required, else optional.\n" +
@@ -84,6 +87,7 @@ func main() {
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")
 	var urlEndPoint = flag.String("url", "", "Generic URL endpoint")
+	var doCfCall = flag.Bool("cf", false, "Simulate CF auth command line")
 	var clientID = flag.String("client_id", "", "OIDC client ID")
 	var clientSecret = flag.String("client_secret", "", "OIDC client secret")
 	var doRefresh = flag.Bool("refresh", false, "Refresh the received id_token")
@@ -107,6 +111,7 @@ func main() {
 	var userPassword = flag.String("password", "", "User password for command password grant required, else optional")
 	var userPkcs12 = flag.String("user_tls", "", "PKCS12 file for user mTLS authentication using passcode command")
 	var loginHint = flag.String("login_hint", "", "Parameter login_hint")
+	var cfOrigin = flag.String("origin", "", "CF UAA origin")
 	var doVersion = flag.Bool("version", false, "Show version")
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
@@ -150,6 +155,12 @@ func main() {
 		if *doVersion {
 			showVersion()
 			return
+		}
+		if *doCfCall {
+			var uaaConfig = cf.ReadUaaConfig()
+			*issEndPoint = uaaConfig.UAAEndpoint
+			*clientID = uaaConfig.UAAOAuthClient
+			*clientSecret = uaaConfig.UAAOAuthClientSecret
 		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
@@ -310,6 +321,8 @@ func main() {
 		// cf case with an empty secret
 		if slices.Contains(arguments, "-client_secret") || slices.Contains(arguments, "--client_secret") {
 			requestMap.Set("client_secret", "")
+		} else if *doCfCall {
+			requestMap.Set("client_secret", *clientSecret)
 		}
 	}
 	if privateKeyJwt != "" {
@@ -317,7 +330,7 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	if *tokenFormatParameter != "" {
+	if *tokenFormatParameter != "" && *doCfCall == false {
 		requestMap.Set("token_format", *tokenFormatParameter)
 	}
 	if *appTid != "" {
@@ -328,6 +341,13 @@ func main() {
 	}
 	if *loginHint != "" {
 		requestMap.Set("login_hint", *loginHint)
+	} else if *cfOrigin != "" {
+		type loginHint struct {
+			Origin string `json:"origin"`
+		}
+		originStruct := loginHint{*cfOrigin}
+		originParam, _ := json.Marshal(originStruct)
+		requestMap.Set("login_hint", url.QueryEscape(string(originParam)))
 	}
 	if *providerName != "" {
 		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
@@ -354,7 +374,10 @@ func main() {
 				log.Fatal("password is required to run this command")
 			}
 			requestMap.Set("password", *userPassword)
-			client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
+			var responseToken = client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
+			if *doCfCall {
+				cf.WriteUaaConfig(*issEndPoint, responseToken)
+			}
 		} else if *command == "token-exchange" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 			if *assertionToken == "" {
@@ -380,7 +403,12 @@ func main() {
 				}
 			}
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			fmt.Println(exchangedTokenResponse)
+			if *doCfCall {
+				fmt.Println(exchangedTokenResponse.AccessToken)
+				cf.WriteUaaConfig(*issEndPoint, exchangedTokenResponse)
+			} else {
+				fmt.Println(exchangedTokenResponse.IdToken)
+			}
 		} else if *command == "jwt-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 			if *assertionToken == "" {
@@ -388,15 +416,23 @@ func main() {
 			}
 			requestMap.Set("assertion", *assertionToken)
 			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			fmt.Println(jwtBearerTokenResponse)
+			if *doCfCall {
+				fmt.Println(jwtBearerTokenResponse.AccessToken)
+				cf.WriteUaaConfig(*issEndPoint, jwtBearerTokenResponse)
+			} else {
+				fmt.Println(jwtBearerTokenResponse.IdToken)
+			}
 		} else if *command == "saml-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
 			if *assertionToken == "" {
 				log.Fatal("assertion parameter not set. Needed to pass it for SAML bearer")
 			}
 			requestMap.Set("assertion", *assertionToken)
-			var jwtBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			fmt.Println(jwtBearerTokenResponse)
+			var samlBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			fmt.Println(samlBearerTokenResponse.AccessToken)
+			if *doCfCall {
+				cf.WriteUaaConfig(*issEndPoint, samlBearerTokenResponse)
+			}
 		} else if *command == "passcode" {
 			if *issEndPoint == "" || !strings.HasPrefix(*issEndPoint, "https://") {
 				log.Fatal("issuer with https schema is required to run this command")

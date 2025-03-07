@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"net/http"
@@ -59,8 +58,8 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken
 	return outBodyMap
 }
 
-func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	accessToken := ""
+func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
 	if requestError != nil {
@@ -79,7 +78,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 		if marshalError != nil {
 			log.Fatal(marshalError)
 		}
-		var myToken oauth2.Token
+		var myToken OpenIdToken
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
@@ -88,14 +87,14 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 				fmt.Println("Response from token-exchange endpoint ")
 				ShowJSonResponse(result, verbose)
 			}
-			accessToken = myToken.AccessToken
+			oidctoken = myToken
 		}
 	}
-	return accessToken
+	return oidctoken
 }
 
-func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	accessToken := ""
+func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
 	if requestError != nil {
@@ -114,7 +113,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 		if marshalError != nil {
 			log.Fatal(marshalError)
 		}
-		var myToken oauth2.Token
+		var myToken OpenIdToken
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
@@ -123,14 +122,14 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 				fmt.Println("Response from JWT bearer endpoint ")
 				ShowJSonResponse(result, verbose)
 			}
-			accessToken = myToken.AccessToken
+			oidctoken = myToken
 		}
 	}
-	return accessToken
+	return oidctoken
 }
 
-func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	accessToken := ""
+func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
 	if requestError != nil {
@@ -149,7 +148,7 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 		if marshalError != nil {
 			log.Fatal(marshalError)
 		}
-		var myToken oauth2.Token
+		var myToken OpenIdToken
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
@@ -158,10 +157,10 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 				fmt.Println("Response from SAML bearer endpoint ")
 				ShowJSonResponse(result, verbose)
 			}
-			accessToken = myToken.AccessToken
+			oidctoken = myToken
 		}
 	}
-	return accessToken
+	return oidctoken
 }
 
 func ShowJSonResponse(result map[string]interface{}, verbose bool) {

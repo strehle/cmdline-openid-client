@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+var (
+	agent = "OpenId Client/GO/1"
+)
+
 func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken string, existingIdToken string, idpScopeParameter string, privateKeyJwt string, tokenEndpoint string, tlsClient http.Client) map[string]interface{} {
 
 	params := url.Values{}
@@ -39,6 +43,7 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, err := tlsClient.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -67,6 +72,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -102,6 +108,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -137,6 +144,7 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -181,6 +189,7 @@ func HandlePasscode(issuer string, tlsClient http.Client, verbose bool) string {
 		log.Fatal(requestError)
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)

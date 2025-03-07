@@ -419,8 +419,10 @@ func main() {
 			if *doCfCall {
 				fmt.Println(jwtBearerTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, jwtBearerTokenResponse)
-			} else {
+			} else if jwtBearerTokenResponse.IdToken != "" {
 				fmt.Println(jwtBearerTokenResponse.IdToken)
+			} else {
+				fmt.Println(jwtBearerTokenResponse.AccessToken)
 			}
 		} else if *command == "saml-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")

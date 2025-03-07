@@ -176,6 +176,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 		log.Fatal(requestError)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -263,6 +264,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	} else {
 		if resp.StatusCode != 200 {
 			log.Println("Not allowed - check if your client ", clientID, " is public. HTTP code ", resp.Status)
+			if verbose && result == nil {
+				showHttpError(*resp)
+			}
 			showHttpClientError(result)
 		} else {
 			log.Println("Error while getting ID token")
@@ -303,6 +307,7 @@ func HandleRefreshFlow(clientID string, appTid string, clientSecret string, exis
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := client.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -319,6 +324,8 @@ func HandleRefreshFlow(clientID string, appTid string, clientSecret string, exis
 		var myToken oauth2.Token
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		refreshToken = myToken.RefreshToken
+	} else {
+		showHttpError(*resp)
 	}
 	return refreshToken
 }
@@ -332,6 +339,7 @@ func HandleClientCredential(request url.Values, bearerToken string, provider oid
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	if bearerToken != "" {
 		req.Header.Set("Authorization", "Bearer "+bearerToken)
 	}
@@ -357,6 +365,10 @@ func HandleClientCredential(request url.Values, bearerToken string, provider oid
 				fmt.Println(myToken.AccessToken)
 			}
 		}
+	} else {
+		if verbose {
+			showHttpError(*resp)
+		}
 	}
 	return refreshToken
 }
@@ -370,6 +382,7 @@ func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient h
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -484,4 +497,12 @@ func showHttpClientError(result []byte) {
 	json.Unmarshal(result, &outBodyMap)
 	resultJson, _ := json.MarshalIndent(outBodyMap, "", "    ")
 	fmt.Println(string(resultJson))
+}
+
+func showHttpError(response http.Response) {
+	if response.StatusCode >= 400 && response.StatusCode < 500 {
+		log.Fatalln("HTTP 4xx  without further details received")
+	} else if response.StatusCode >= 500 {
+		log.Fatalln("HTTP 500 received")
+	}
 }

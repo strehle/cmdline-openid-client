@@ -6,7 +6,7 @@ toolchain go1.23.6
 
 require (
 	github.com/akshaybabloo/pkce v1.0.2
-	github.com/coreos/go-oidc/v3 v3.12.0
+	github.com/coreos/go-oidc/v3 v3.13.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.4

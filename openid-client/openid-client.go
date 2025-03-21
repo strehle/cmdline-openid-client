@@ -62,6 +62,8 @@ func main() {
 			"      -assertion        Input token for token exchanges, e.g. jwt-bearer or token-exchange and other token information endpoints.\n" +
 			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
 			"      -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.\n" +
+			"      -prompt           OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.\n" +
+			"      -max_age          OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. \n" +
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
@@ -94,6 +96,8 @@ func main() {
 	var isVerbose = flag.Bool("v", false, "Show more details about calls")
 	var scopeParameter = flag.String("scope", "", "OIDC scope parameter")
 	var nonceParameter = flag.String("nonce", "", "OIDC nonce parameter")
+	var promptParameter = flag.String("prompt", "", "OIDC nonce parameter")
+	var maxAgeParameter = flag.String("max_age", "", "OIDC nonce parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
@@ -465,6 +469,12 @@ func main() {
 		// nonceParameter, only in authorize
 		if *nonceParameter != "" {
 			requestMap.Set("nonce", *nonceParameter)
+		}
+		if *promptParameter != "" {
+			requestMap.Set("prompt", *promptParameter)
+		}
+		if *maxAgeParameter != "" {
+			requestMap.Set("max_age", *maxAgeParameter)
 		}
 		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {

@@ -116,6 +116,12 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	if request.Has("nonce") {
 		query.Set("nonce", request.Get("nonce"))
 	}
+	if request.Has("prompt") {
+		query.Set("prompt", request.Get("prompt"))
+	}
+	if request.Has("max_age") {
+		query.Set("max_age", request.Get("max_age"))
+	}
 	authzURL.RawQuery = query.Encode()
 
 	//cmd := exec.Command("open", authzURL.String())

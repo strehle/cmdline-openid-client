@@ -60,7 +60,7 @@ Flags:
       -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.
       -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.
       -prompt           OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.
-	  -max_age          OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request.
+      -max_age          OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request.
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
       -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
       -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).

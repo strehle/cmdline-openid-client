@@ -9,7 +9,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
-	github.com/lestrrat-go/jwx/v2 v2.1.5
+	github.com/lestrrat-go/jwx/v2 v2.1.6
 	golang.org/x/net v0.39.0
 	golang.org/x/oauth2 v0.30.0
 )

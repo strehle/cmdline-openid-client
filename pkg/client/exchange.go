@@ -213,3 +213,35 @@ func HandlePasscode(issuer string, tlsClient http.Client, verbose bool) string {
 	}
 	return passcode
 }
+
+func HandleTokenIntrospect(request url.Values, token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
+	request.Set("token", token)
+	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	var result map[string]interface{}
+	var resultString string
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result != nil {
+		jsonStr, marshalError := json.MarshalIndent(result, "", "    ")
+		if marshalError != nil {
+			log.Fatal(marshalError)
+		}
+		resultString = string(jsonStr)
+		if verbose {
+			fmt.Println("Response from token introspect endpoint ")
+			ShowJSonResponse(result, verbose)
+		} else {
+			fmt.Println(resultString)
+		}
+	}
+	return resultString
+}

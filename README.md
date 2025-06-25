@@ -39,7 +39,9 @@ Command: (authorization_code is default)
        token-exchange     Perform OAuth2 Token Exchange (RFC 8693).
        jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.
        saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.
-       passcode           Retrieve user passcode from X509 user authentication.
+       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.
+       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.
+       introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.
        version            Show version.
        help               Show this help for more details.
 
@@ -64,7 +66,9 @@ Flags:
       -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.
       -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
       -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
+      -introspect       Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.
       -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
+      -token            Input token for token introspect and token-exchange calls.
       -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
       -app_tid          Optional parameter for IAS multi-tenant applications.
       -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password

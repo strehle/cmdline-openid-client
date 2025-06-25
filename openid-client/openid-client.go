@@ -43,6 +43,7 @@ func main() {
 			"       saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.\n" +
 			"       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.\n" +
 			"       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.\n" +
+			"       introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -67,7 +68,9 @@ func main() {
 			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
 			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
+			"      -introspect       Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
+			"      -token            Input token for token introspect and token-exchange calls.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -app_tid          Optional parameter for IAS multi-tenant applications.\n" +
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
@@ -99,6 +102,7 @@ func main() {
 	var promptParameter = flag.String("prompt", "", "OIDC nonce parameter")
 	var maxAgeParameter = flag.String("max_age", "", "OIDC nonce parameter")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
+	var doIntrospect = flag.Bool("introspect", false, "Call introspect with received id_token")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
 	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
@@ -120,6 +124,7 @@ func main() {
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
+	var tokenInput = flag.String("token", "", "Input token for token introspect or revoke")
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
@@ -148,8 +153,10 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "":
-	case "passcode":
-		*clientID = "T000000" /* default */
+	case "passcode", "introspect":
+		if *clientID == "" {
+			*clientID = "T000000" /* default */
+		}
 	case "authorization_code":
 		*command = "" /* default command */
 	default:
@@ -180,6 +187,7 @@ func main() {
 		AuthorizeEndpoint  string `json:"authorization_endpoint"`
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 		TokenEndPoint      string `json:"token_endpoint"`
+		IntroSpectEndpoint string `json:"introspection_endpoint,omitempty"`
 	}
 	provider, oidcError := oidc.NewProvider(ctx, *issEndPoint)
 	if oidcError != nil {
@@ -199,6 +207,7 @@ func main() {
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
+				Renegotiation:      tls.RenegotiateOnceAsClient,
 				InsecureSkipVerify: *skipTlsVerification,
 			},
 		},
@@ -272,7 +281,8 @@ func main() {
 			tlsClient = &http.Client{
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						Certificates: []tls.Certificate{cert},
+						Renegotiation: tls.RenegotiateOnceAsClient,
+						Certificates:  []tls.Certificate{cert},
 					},
 				},
 			}
@@ -385,9 +395,14 @@ func main() {
 		} else if *command == "token-exchange" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 			if *assertionToken == "" {
-				log.Fatal("assertion parameter not set. Needed to pass it to subject_token for token-exchange")
+				if *tokenInput != "" {
+					requestMap.Set("subject_token", *tokenInput)
+				} else {
+					log.Fatal("assertion and/or token parameter not set. Needed to pass it to subject_token for token-exchange")
+				}
+			} else {
+				requestMap.Set("subject_token", *assertionToken)
 			}
-			requestMap.Set("subject_token", *assertionToken)
 			if *subjectType == "" {
 				log.Fatal("subject_type parameter not set. Supported parameters for token-exchange are, id_token, access_token, refresh_token, jwt")
 			} else {
@@ -463,6 +478,16 @@ func main() {
 				fmt.Println("Response from endpoint /exchange/corporateidp")
 			}
 			fmt.Println(string(data))
+		} else if *command == "introspect" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for validation")
+			}
+			if *clientID != "" && *clientID != "T000000" {
+				requestMap.Set("client_id", *clientID)
+			} else {
+				requestMap.Del("client_id")
+			}
+			client.HandleTokenIntrospect(requestMap, *tokenInput, claims.IntroSpectEndpoint, *tlsClient, verbose)
 		} else if *command == "jwks" {
 		}
 	} else {
@@ -522,6 +547,11 @@ func main() {
 
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			fmt.Println(exchangedTokenResponse)
+		}
+		if *doIntrospect && idToken != "" && claims.IntroSpectEndpoint != "" {
+			requestMap := url.Values{}
+			requestMap.Set("client_id", *clientID)
+			client.HandleTokenIntrospect(requestMap, idToken, claims.IntroSpectEndpoint, *tlsClient, verbose)
 		}
 	}
 }

@@ -286,6 +286,7 @@ func HandleRefreshFlow(clientID string, appTid string, clientSecret string, exis
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
+				Renegotiation:      tls.RenegotiateOnceAsClient,
 				InsecureSkipVerify: skipTlsVerification,
 			},
 		},

@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/akshaybabloo/pkce v1.0.2
 	github.com/coreos/go-oidc/v3 v3.14.1
-	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	golang.org/x/net v0.42.0

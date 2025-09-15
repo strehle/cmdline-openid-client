@@ -177,6 +177,12 @@ func main() {
 		if *issEndPoint == "" {
 			*issEndPoint = os.Getenv("OPENID_ISSUER")
 		}
+		if *clientID == "" {
+			*clientID = os.Getenv("OPENID_ID")
+		}
+		if *clientSecret == "" {
+			*clientSecret = os.Getenv("OPENID_SECRET")
+		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {

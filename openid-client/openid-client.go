@@ -7,20 +7,21 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/strehle/cmdline-openid-client/pkg/cf"
-	"github.com/strehle/cmdline-openid-client/pkg/client"
-	"golang.org/x/net/context"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"slices"
-	"software.sslmate.com/src/go-pkcs12"
 	"strings"
+
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/strehle/cmdline-openid-client/pkg/cf"
+	"github.com/strehle/cmdline-openid-client/pkg/client"
+	"golang.org/x/net/context"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 var (
@@ -172,6 +173,9 @@ func main() {
 			*issEndPoint = uaaConfig.UAAEndpoint
 			*clientID = uaaConfig.UAAOAuthClient
 			*clientSecret = uaaConfig.UAAOAuthClientSecret
+		}
+		if *issEndPoint == "" {
+			*issEndPoint = os.Getenv("OPENID_ISSUER")
 		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
@@ -426,7 +430,11 @@ func main() {
 				fmt.Println(exchangedTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, exchangedTokenResponse)
 			} else {
-				fmt.Println(exchangedTokenResponse.IdToken)
+				if exchangedTokenResponse.IdToken != "" {
+					fmt.Println(exchangedTokenResponse.IdToken)
+				} else {
+					fmt.Println(exchangedTokenResponse.AccessToken)
+				}
 			}
 		} else if *command == "jwt-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")

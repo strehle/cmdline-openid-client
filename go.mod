@@ -2,7 +2,7 @@ module github.com/strehle/cmdline-openid-client
 
 go 1.24.0
 
-toolchain go1.24.1
+toolchain go1.24.8
 
 require (
 	github.com/akshaybabloo/pkce v1.0.2

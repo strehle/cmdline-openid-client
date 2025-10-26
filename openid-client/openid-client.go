@@ -388,6 +388,7 @@ func main() {
 	if *resourceSso {
 		requestMap.Set("resource", "urn:sap:identity:sso")
 		requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+		// Set the requestedType to "access_token" so the caller knows which token type was requested.
 		*requestedType = "access_token"
 	} else if *providerName != "" {
 		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)

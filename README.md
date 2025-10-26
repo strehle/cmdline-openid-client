@@ -42,6 +42,7 @@ Command: (authorization_code is default)
        passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.
        idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.
        introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.
+       sso                Perform sso token flow to open a new Web Session in IAS.
        version            Show version.
        help               Show this help for more details.
 
@@ -82,6 +83,8 @@ Flags:
       -subject_type     Token-Exchange subject type. Type of input assertion.
       -resource         Token-Exchange custom resource parameter.
       -requested_type   Token-Exchange requested type.
+      -redirect_uri     Redirect URL for the for the sso flow.
+      -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -provider_name    Provider name for token-exchange.
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.

@@ -86,7 +86,7 @@ func main() {
 			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
-			"      -k                Skip TLS server certificate verification.\n" +
+			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
 	}
@@ -130,7 +130,7 @@ func main() {
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
 	var resourceParam = flag.String("resource", "", "Additional resource")
-	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
+	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -155,6 +155,7 @@ func main() {
 		return
 	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "":
 	case "passcode", "introspect":
+		*clientID = os.Getenv("OPENID_ID")
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
 		}
@@ -198,6 +199,9 @@ func main() {
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 		TokenEndPoint      string `json:"token_endpoint"`
 		IntroSpectEndpoint string `json:"introspection_endpoint,omitempty"`
+	}
+	if *skipTlsVerification {
+		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
 	}
 	provider, oidcError := oidc.NewProvider(ctx, *issEndPoint)
 	if oidcError != nil {
@@ -354,8 +358,11 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	if *tokenFormatParameter != "" && *doCfCall == false {
+	var envFormat = os.Getenv("OPENID_FORMAT")
+	if *tokenFormatParameter != "" && envFormat == "" && *doCfCall == false {
 		requestMap.Set("token_format", *tokenFormatParameter)
+	} else if envFormat != "" {
+		requestMap.Set("token_format", envFormat)
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)

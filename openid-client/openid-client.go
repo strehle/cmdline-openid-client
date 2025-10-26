@@ -89,7 +89,7 @@ func main() {
 			"      -redirect_uri     Redirect URL for the for the sso flow.\n" +
 			"      -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
-			"      -k                Skip TLS server certificate verification and skip OIDC issuer check form well-known.\n" +
+			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
 	}
@@ -160,6 +160,7 @@ func main() {
 		return
 	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
 	case "passcode", "introspect":
+		*clientID = os.Getenv("OPENID_ID")
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
 		}
@@ -362,8 +363,11 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	if *tokenFormatParameter != "" && *doCfCall == false {
+	var envFormat = os.Getenv("OPENID_FORMAT")
+	if *tokenFormatParameter != "" && envFormat == "" && *doCfCall == false {
 		requestMap.Set("token_format", *tokenFormatParameter)
+	} else if envFormat != "" {
+		requestMap.Set("token_format", envFormat)
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)

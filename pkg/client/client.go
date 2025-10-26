@@ -541,7 +541,7 @@ func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) 
 	}
 	cmdError := cmd.Start()
 	if cmdError != nil {
-		log.Fatal(authzURLParseError)
+		log.Fatal(cmdError)
 	}
 	return "", ""
 }

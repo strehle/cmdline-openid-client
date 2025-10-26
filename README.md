@@ -83,7 +83,26 @@ Flags:
       -resource         Token-Exchange custom resource parameter.
       -requested_type   Token-Exchange requested type.
       -provider_name    Provider name for token-exchange.
-      -k                Skip TLS server certificate verification.
+      -k                Skip TLS server certificate verification and skip OIDC issuer check form well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.
+```
+
+### How to test in automation without showing secrets
+In environments with outlog to logs or others it might be needed to hide the secrets and/or client details.
+There are some environment variables, which will be used if set. A variable passed to the command itself always as prio before the
+environment, but you can also mix input parameters and environment.
+
+* OPENID_ISSUER The issuer of the OIDC server. Useful if you re-use a command often to omit it from a command. 
+* OPENID_ID The client_id parameter.
+* OPENID_SECRET The client_secret parameter.
+* OPENID_FORMAT The format of the access_token. Possible values are jwt or opaque.
+
+Example
+```text
+openid-client client_credentials
+```
+or with some information
+```text
+openid-client client_credentials -client_id xxxxx
 ```

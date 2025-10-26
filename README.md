@@ -83,7 +83,7 @@ Flags:
       -resource         Token-Exchange custom resource parameter.
       -requested_type   Token-Exchange requested type.
       -provider_name    Provider name for token-exchange.
-      -k                Skip TLS server certificate verification and skip OIDC issuer check form well-known.
+      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.
 ```

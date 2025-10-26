@@ -514,3 +514,34 @@ func showHttpError(response http.Response) {
 		log.Fatalln("HTTP 500 received")
 	}
 }
+
+func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) (string, string) {
+
+	authzURL, authzURLParseError := url.Parse(provider.Endpoint().AuthURL)
+	if authzURLParseError != nil {
+		log.Fatal(authzURLParseError)
+	}
+	query := authzURL.Query()
+	query.Set("redirect_uri", redirectUri)
+	query.Set("sso_token", ssoToken)
+	authzURL.RawQuery = query.Encode()
+	openUrl := strings.Replace(authzURL.String(), "/oauth2/authorize", "/saml2/idp/sso", 1)
+	cmd := exec.Command("", openUrl)
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", openUrl)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", openUrl)
+	case "darwin":
+		cmd = exec.Command("open", openUrl)
+	default:
+		cmd = nil
+		fmt.Printf("unsupported platform")
+		return "", ""
+	}
+	cmdError := cmd.Start()
+	if cmdError != nil {
+		log.Fatal(authzURLParseError)
+	}
+	return "", ""
+}

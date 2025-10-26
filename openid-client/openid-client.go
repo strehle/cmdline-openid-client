@@ -45,6 +45,7 @@ func main() {
 			"       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.\n" +
 			"       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.\n" +
 			"       introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.\n" +
+			"       sso                Perform sso token flow to open a new Web Session in IAS.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -85,8 +86,10 @@ func main() {
 			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
 			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
+			"      -redirect_uri     Redirect URL for the for the sso flow.\n" +
+			"      -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
-			"      -k                Skip TLS server certificate verification.\n" +
+			"      -k                Skip TLS server certificate verification and skip OIDC issuer check form well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
 	}
@@ -129,8 +132,10 @@ func main() {
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
+	var redirectUri = flag.String("redirect_uri", "", "Redirect URL for sso")
+	var resourceSso = flag.Bool("sso", false, "Adds static parameter resource=urn:sap:identity:sso to token-exchange.")
 	var resourceParam = flag.String("resource", "", "Additional resource")
-	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification")
+	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -153,7 +158,7 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "":
+	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
 	case "passcode", "introspect":
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
@@ -198,6 +203,9 @@ func main() {
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 		TokenEndPoint      string `json:"token_endpoint"`
 		IntroSpectEndpoint string `json:"introspection_endpoint,omitempty"`
+	}
+	if *skipTlsVerification {
+		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
 	}
 	provider, oidcError := oidc.NewProvider(ctx, *issEndPoint)
 	if oidcError != nil {
@@ -373,7 +381,11 @@ func main() {
 		originParam, _ := json.Marshal(originStruct)
 		requestMap.Set("login_hint", url.QueryEscape(string(originParam)))
 	}
-	if *providerName != "" {
+	if *resourceSso {
+		requestMap.Set("resource", "urn:sap:identity:sso")
+		requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+		*requestedType = "access_token"
+	} else if *providerName != "" {
 		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 	}
 	if *resourceParam != "" {
@@ -502,6 +514,8 @@ func main() {
 				requestMap.Del("client_id")
 			}
 			client.HandleTokenIntrospect(requestMap, *tokenInput, claims.IntroSpectEndpoint, *tlsClient, verbose)
+		} else if *command == "sso" {
+			client.HandleSsoFlow(*tokenInput, *redirectUri, *provider)
 		} else if *command == "jwks" {
 		}
 	} else {

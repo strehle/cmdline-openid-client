@@ -86,7 +86,7 @@ func main() {
 			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
-			"      -k                Skip TLS server certificate verification and skip OIDC issuer check form well-known.\n" +
+			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
 	}

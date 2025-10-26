@@ -526,7 +526,7 @@ func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) 
 	query.Set("sso_token", ssoToken)
 	authzURL.RawQuery = query.Encode()
 	openUrl := strings.Replace(authzURL.String(), "/oauth2/authorize", "/saml2/idp/sso", 1)
-	cmd := exec.Command("", openUrl)
+	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
 		cmd = exec.Command("xdg-open", openUrl)

@@ -536,7 +536,7 @@ func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) 
 		cmd = exec.Command("open", openUrl)
 	default:
 		cmd = nil
-		fmt.Printf("unsupported platform")
+		fmt.Println("unsupported platform")
 		return "", ""
 	}
 	cmdError := cmd.Start()

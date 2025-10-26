@@ -83,7 +83,7 @@ Flags:
       -subject_type     Token-Exchange subject type. Type of input assertion.
       -resource         Token-Exchange custom resource parameter.
       -requested_type   Token-Exchange requested type.
-      -redirect_uri     Redirect URL for the for the sso flow.
+      -redirect_uri     Redirect URL for the sso flow.
       -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -provider_name    Provider name for token-exchange.
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.

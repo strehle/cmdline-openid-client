@@ -86,7 +86,7 @@ func main() {
 			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
 			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
-			"      -redirect_uri     Redirect URL for the for the sso flow.\n" +
+			"      -redirect_uri     Redirect URL for the sso flow.\n" +
 			"      -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
 			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +

@@ -515,7 +515,7 @@ func showHttpError(response http.Response) {
 	}
 }
 
-func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) (string, string) {
+func HandleSsoFlow(ssoToken string, redirectUri string, spName string, provider oidc.Provider) (string, string) {
 
 	authzURL, authzURLParseError := url.Parse(provider.Endpoint().AuthURL)
 	if authzURLParseError != nil {
@@ -524,6 +524,9 @@ func HandleSsoFlow(ssoToken string, redirectUri string, provider oidc.Provider) 
 	query := authzURL.Query()
 	query.Set("redirect_uri", redirectUri)
 	query.Set("sso_token", ssoToken)
+	if spName != "" {
+		query.Set("sp", spName)
+	}
 	authzURL.RawQuery = query.Encode()
 	openUrl := strings.Replace(authzURL.String(), "/oauth2/authorize", "/saml2/idp/sso", 1)
 	var cmd *exec.Cmd

@@ -45,7 +45,7 @@ func main() {
 			"       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.\n" +
 			"       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.\n" +
 			"       introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.\n" +
-			"       sso                Perform sso token flow to open a new Web Session in IAS.\n" +
+			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -86,8 +86,10 @@ func main() {
 			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
 			"      -resource         Token-Exchange custom resource parameter.\n" +
 			"      -requested_type   Token-Exchange requested type.\n" +
-			"      -redirect_uri     Redirect URL for the sso flow.\n" +
-			"      -sso              Token-Exchange resource SSO flow. Add static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
+			"      -redirect_uri     Redirect URL for the sso command only.\n" +
+			"      -sp               Service provider name parameter for sso command only.\n" +
+			"      -sso              Token-Exchange resource SSO flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
+			"      -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
 			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
@@ -136,6 +138,8 @@ func main() {
 	var resourceSso = flag.Bool("sso", false, "Adds static parameter resource=urn:sap:identity:sso to token-exchange.")
 	var resourceParam = flag.String("resource", "", "Additional resource")
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
+	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
+	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -440,7 +444,7 @@ func main() {
 				}
 			}
 			if *requestedType == "" {
-				log.Fatal("assertion parameter not set. Needed to pass it to subject_token for token-exchange")
+				log.Fatal("requested_type parameter not set. Supported parameters for token-exchange are, id_token, access_token, saml2, saml2-header")
 			} else {
 				if strings.Contains(*requestedType, "saml2-header") || strings.Contains(*requestedType, "saml-header") {
 					requestMap.Set("requested_token_type", "urn:sap:identity:oauth:token-type:saml2-header")
@@ -520,7 +524,7 @@ func main() {
 			}
 			client.HandleTokenIntrospect(requestMap, *tokenInput, claims.IntroSpectEndpoint, *tlsClient, verbose)
 		} else if *command == "sso" {
-			client.HandleSsoFlow(*tokenInput, *redirectUri, *provider)
+			client.HandleSsoFlow(*ssoTokenValue, *redirectUri, *spName, *provider)
 		} else if *command == "jwks" {
 		}
 	} else {
@@ -533,6 +537,9 @@ func main() {
 		}
 		if *maxAgeParameter != "" {
 			requestMap.Set("max_age", *maxAgeParameter)
+		}
+		if *ssoTokenValue != "" {
+			requestMap.Set("sso_token", *ssoTokenValue)
 		}
 		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {
@@ -561,6 +568,13 @@ func main() {
 				fmt.Println("Response from endpoint /exchange/corporateidp")
 			}
 			fmt.Println(string(data))
+		}
+		if *resourceSso {
+			//requestMap.Set("resource", "urn:sap:identity:sso")
+			//requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+			// Set the requestedType to "access_token" so the caller knows which token type was requested.
+			*requestedType = "access_token"
+			*resourceParam = "urn:sap:identity:sso"
 		}
 		if *requestedType != "" && idToken != "" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")

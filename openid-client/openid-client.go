@@ -570,11 +570,11 @@ func main() {
 			fmt.Println(string(data))
 		}
 		if *resourceSso {
-			//requestMap.Set("resource", "urn:sap:identity:sso")
-			//requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 			// Set the requestedType to "access_token" so the caller knows which token type was requested.
 			*requestedType = "access_token"
-			*resourceParam = "urn:sap:identity:sso"
+			*resourceParam = ""
+			requestMap.Set("resource", "urn:sap:identity:sso")
+			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 		}
 		if *requestedType != "" && idToken != "" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")

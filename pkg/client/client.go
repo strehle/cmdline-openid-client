@@ -123,6 +123,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	if request.Has("max_age") {
 		query.Set("max_age", request.Get("max_age"))
 	}
+	if request.Has("sso_token") {
+		query.Set("sso_token", request.Get("sso_token"))
+	}
 	authzURL.RawQuery = query.Encode()
 
 	//cmd := exec.Command("open", authzURL.String())

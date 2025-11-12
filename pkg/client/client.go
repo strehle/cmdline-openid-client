@@ -64,7 +64,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -128,8 +128,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	}
 	authzURL.RawQuery = query.Encode()
 
-	//cmd := exec.Command("open", authzURL.String())
-	fmt.Println("Execute URL: ", authzURL.String())
+	if !bSilent {
+		fmt.Println("Execute URL: ", authzURL.String())
+	}
 
 	cmd := exec.Command("", authzURL.String())
 	switch runtime.GOOS {
@@ -199,13 +200,14 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	}
 
 	if resp.StatusCode == 200 && result != nil {
-		fmt.Println("==========")
-		if verbose {
-			fmt.Println("OIDC Response Body")
+		if !bSilent {
+			fmt.Println("==========")
+			if verbose {
+				fmt.Println("OIDC Response Body")
+			}
+			showHttpClientError(result)
+			fmt.Println("==========")
 		}
-		showHttpClientError(result)
-		fmt.Println("==========")
-
 		var jsonStr = result
 		ctx := context.Background()
 		var myToken OIDC_Token

@@ -541,7 +541,8 @@ func main() {
 		if *ssoTokenValue != "" {
 			requestMap.Set("sso_token", *ssoTokenValue)
 		}
-		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var bSilent = *resourceSso && !verbose
+		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {
 			if refreshToken == "" {
 				log.Println("No refresh token received.")
@@ -593,7 +594,11 @@ func main() {
 			}
 
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			fmt.Println(exchangedTokenResponse)
+			if exchangedTokenResponse.AccessToken != "" {
+				fmt.Println(exchangedTokenResponse.AccessToken)
+			} else {
+				fmt.Println(exchangedTokenResponse.IdToken)
+			}
 		}
 		if *doIntrospect && idToken != "" && claims.IntroSpectEndpoint != "" {
 			requestMap := url.Values{}

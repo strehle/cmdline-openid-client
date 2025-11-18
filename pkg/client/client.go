@@ -64,7 +64,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
 
 	refreshToken := ""
 	idToken := ""
@@ -123,10 +123,14 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	if request.Has("max_age") {
 		query.Set("max_age", request.Get("max_age"))
 	}
+	if request.Has("sso_token") {
+		query.Set("sso_token", request.Get("sso_token"))
+	}
 	authzURL.RawQuery = query.Encode()
 
-	//cmd := exec.Command("open", authzURL.String())
-	fmt.Println("Execute URL: ", authzURL.String())
+	if !bSilent {
+		fmt.Println("Execute URL: ", authzURL.String())
+	}
 
 	cmd := exec.Command("", authzURL.String())
 	switch runtime.GOOS {
@@ -196,13 +200,14 @@ func HandleOpenIDFlow(request url.Values, verbose bool, callbackURL string, scop
 	}
 
 	if resp.StatusCode == 200 && result != nil {
-		fmt.Println("==========")
-		if verbose {
-			fmt.Println("OIDC Response Body")
+		if !bSilent {
+			fmt.Println("==========")
+			if verbose {
+				fmt.Println("OIDC Response Body")
+			}
+			showHttpClientError(result)
+			fmt.Println("==========")
 		}
-		showHttpClientError(result)
-		fmt.Println("==========")
-
 		var jsonStr = result
 		ctx := context.Background()
 		var myToken OIDC_Token
@@ -513,4 +518,38 @@ func showHttpError(response http.Response) {
 	} else if response.StatusCode >= 500 {
 		log.Fatalln("HTTP 500 received")
 	}
+}
+
+func HandleSsoFlow(ssoToken string, redirectUri string, spName string, provider oidc.Provider) (string, string) {
+
+	authzURL, authzURLParseError := url.Parse(provider.Endpoint().AuthURL)
+	if authzURLParseError != nil {
+		log.Fatal(authzURLParseError)
+	}
+	query := authzURL.Query()
+	query.Set("redirect_uri", redirectUri)
+	query.Set("sso_token", ssoToken)
+	if spName != "" {
+		query.Set("sp", spName)
+	}
+	authzURL.RawQuery = query.Encode()
+	openUrl := strings.Replace(authzURL.String(), "/oauth2/authorize", "/saml2/idp/sso", 1)
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", openUrl)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", openUrl)
+	case "darwin":
+		cmd = exec.Command("open", openUrl)
+	default:
+		cmd = nil
+		fmt.Println("unsupported platform")
+		return "", ""
+	}
+	cmdError := cmd.Start()
+	if cmdError != nil {
+		log.Fatal(cmdError)
+	}
+	return "", ""
 }

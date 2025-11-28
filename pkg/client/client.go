@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/sha1"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -287,16 +286,8 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	return idToken, refreshToken
 }
 
-func HandleRefreshFlow(clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, skipTlsVerification bool, provider oidc.Provider) string {
-	refreshToken := ""
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				Renegotiation:      tls.RenegotiateOnceAsClient,
-				InsecureSkipVerify: skipTlsVerification,
-			},
-		},
-	}
+func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, provider oidc.Provider) OpenIdToken {
+	var myToken OpenIdToken
 	vals := url.Values{}
 	vals.Set("grant_type", "refresh_token")
 	vals.Set("refresh_token", existingRefresh)
@@ -321,26 +312,31 @@ func HandleRefreshFlow(clientID string, appTid string, clientSecret string, exis
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := client.Do(req)
+	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
-	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
-	if result != nil {
-		fmt.Print("Result from refresh flow: ")
-		fmt.Println(result)
-		jsonStr, marshalError := json.Marshal(result)
-		if marshalError != nil {
-			log.Fatal(marshalError)
-		}
-		var myToken oauth2.Token
-		json.Unmarshal([]byte(jsonStr), &myToken)
-		refreshToken = myToken.RefreshToken
-	} else {
-		showHttpError(*resp)
+	defer resp.Body.Close()
+
+	result, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	return refreshToken
+	if result != nil {
+		if verbose {
+			fmt.Println("==========")
+			fmt.Println("OIDC Response Body from Refresh Flow")
+			showHttpClientError(result)
+			fmt.Println("==========")
+		}
+		var myToken OpenIdToken
+		json.Unmarshal([]byte(result), &myToken)
+	} else {
+		if !bSilent {
+			showHttpError(*resp)
+		}
+	}
+	return myToken
 }
 
 func HandleClientCredential(request url.Values, bearerToken string, provider oidc.Provider, tlsClient http.Client, verbose bool) string {

@@ -541,7 +541,10 @@ func main() {
 		if *ssoTokenValue != "" {
 			requestMap.Set("sso_token", *ssoTokenValue)
 		}
-		var bSilent = *resourceSso && !verbose
+		if *resourceParam != "" {
+			requestMap.Set("resource", *resourceParam)
+		}
+		var bSilent = (*resourceSso || *doRefresh) && !verbose
 		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
 		if *doRefresh {
 			if refreshToken == "" {

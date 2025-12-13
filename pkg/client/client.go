@@ -126,6 +126,13 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	if request.Has("sso_token") {
 		query.Set("sso_token", request.Get("sso_token"))
 	}
+	if request.Has("resource") {
+		query.Set("resource", request.Get("resource"))
+	}
+	if request.Has("app_tid") {
+		query.Set("app_tid", request.Get("app_tid"))
+		query.Set("state", endsession+"?client_id="+clientID+"&app_tid="+request.Get("app_tid"))
+	}
 	authzURL.RawQuery = query.Encode()
 
 	if !bSilent {
@@ -177,6 +184,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	}
 	if request.Has("refresh_expiry") {
 		vals.Set("refresh_expiry", request.Get("refresh_expiry"))
+	}
+	if request.Has("resource") {
+		vals.Set("resource", request.Get("resource"))
 	}
 	if privateKeyJwt != "" {
 		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")

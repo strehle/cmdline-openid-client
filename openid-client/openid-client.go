@@ -551,11 +551,15 @@ func main() {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh = client.HandleRefreshFlow(*clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *skipTlsVerification, *provider)
+			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, *provider)
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
-				log.Println("New refresh token: " + newRefresh)
+				log.Println("New refresh token: " + newRefresh.RefreshToken)
+			} else {
+				fmt.Println(newRefresh.RefreshToken)
 			}
+			refreshToken = newRefresh.RefreshToken
+			idToken = newRefresh.IdToken
 		}
 		if *doCorpIdpTokenExchange {
 			if idToken == "" {

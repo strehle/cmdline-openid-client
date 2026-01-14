@@ -339,7 +339,6 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 			showHttpClientError(result)
 			fmt.Println("==========")
 		}
-		var myToken OpenIdToken
 		json.Unmarshal([]byte(result), &myToken)
 	} else {
 		if !bSilent {

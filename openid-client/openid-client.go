@@ -39,6 +39,7 @@ func main() {
 			"       authorization_code Perform authorization code flow.\n" +
 			"       client_credentials Perform client credentials flow.\n" +
 			"       password           Perform resource owner flow, also known as password flow.\n" +
+			"       refresh            Perform refresh_token flow.\n" +
 			"       token-exchange     Perform OAuth2 Token Exchange (RFC 8693).\n" +
 			"       jwt-bearer         Perform OAuth2 JWT Bearer Grant Type.\n" +
 			"       saml-bearer        Perform OAuth2 SAML 2.0 Bearer Grant Type.\n" +
@@ -72,7 +73,7 @@ func main() {
 			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -introspect       Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
 			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
-			"      -token            Input token for token introspect and token-exchange calls.\n" +
+			"      -token            Input token for token introspect, refresh flow and token-exchange calls.\n" +
 			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -app_tid          Optional parameter for IAS multi-tenant applications.\n" +
 			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
@@ -130,7 +131,7 @@ func main() {
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
-	var tokenInput = flag.String("token", "", "Input token for token introspect or revoke")
+	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh or revoke")
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
@@ -162,7 +163,7 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
+	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
 	case "passcode", "introspect":
 		*clientID = os.Getenv("OPENID_ID")
 		if *clientID == "" {
@@ -372,6 +373,7 @@ func main() {
 		requestMap.Set("token_format", *tokenFormatParameter)
 	} else if envFormat != "" {
 		requestMap.Set("token_format", envFormat)
+		*tokenFormatParameter = envFormat
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)
@@ -422,6 +424,22 @@ func main() {
 			var responseToken = client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
 			if *doCfCall {
 				cf.WriteUaaConfig(*issEndPoint, responseToken)
+			}
+		} else if *command == "refresh" {
+			if *tokenInput == "" && *assertionToken == "" {
+				log.Fatal("either token or assertion parameter is required to run this command")
+			}
+			var refreshToken = *tokenInput
+			if refreshToken == "" && *assertionToken != "" {
+				refreshToken = *assertionToken
+			}
+			var bSilent = (*resourceSso || *doRefresh) && !verbose
+			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, *provider)
+			if verbose {
+				log.Println("Old refresh token: " + refreshToken)
+				log.Println("New refresh token: " + newRefresh.RefreshToken)
+			} else {
+				fmt.Println(newRefresh.RefreshToken)
 			}
 		} else if *command == "token-exchange" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")

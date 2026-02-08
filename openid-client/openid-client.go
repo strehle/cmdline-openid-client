@@ -111,7 +111,7 @@ func main() {
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
 	var doIntrospect = flag.Bool("introspect", false, "Call introspect with received id_token")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
-	var tokenFormatParameter = flag.String("token_format", "opaque", "Format for access_token")
+	var tokenFormatParameter = flag.String("token_format", "", "Format for access_token")
 	var portParameter = flag.String("port", "8080", "Callback port on localhost")
 	var idpScopeParameter = flag.String("idp_scope", "", "Request scope parameter in OIDC IdP token")
 	var clientPkcs12 = flag.String("client_tls", "", "PKCS12 file for OIDC client mTLS authentication")
@@ -165,7 +165,9 @@ func main() {
 		return
 	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
 	case "passcode", "introspect":
-		*clientID = os.Getenv("OPENID_ID")
+		if *clientID == "" {
+			*clientID = os.Getenv("OPENID_ID")
+		}
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
 		}
@@ -368,7 +370,13 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	var envFormat = os.Getenv("OPENID_FORMAT")
+	var envFormat = *tokenFormatParameter
+	if *tokenFormatParameter == "" {
+		envFormat = os.Getenv("OPENID_FORMAT")
+		if envFormat == "" && *tokenFormatParameter == "" {
+			*tokenFormatParameter = "opaque"
+		}
+	}
 	if *tokenFormatParameter != "" && envFormat == "" && *doCfCall == false {
 		requestMap.Set("token_format", *tokenFormatParameter)
 	} else if envFormat != "" {
@@ -391,12 +399,7 @@ func main() {
 		originParam, _ := json.Marshal(originStruct)
 		requestMap.Set("login_hint", url.QueryEscape(string(originParam)))
 	}
-	if *resourceSso {
-		requestMap.Set("resource", "urn:sap:identity:sso")
-		requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
-		// Set the requestedType to "access_token" so the caller knows which token type was requested.
-		*requestedType = "access_token"
-	} else if *providerName != "" {
+	if *providerName != "" {
 		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 	}
 	if *resourceParam != "" {
@@ -404,6 +407,12 @@ func main() {
 	}
 
 	if *command != "" {
+		if *resourceSso {
+			requestMap.Set("resource", "urn:sap:identity:sso")
+			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+			// Set the requestedType to "access_token" so the caller knows which token type was requested.
+			*requestedType = "access_token"
+		}
 		if *scopeParameter != "" {
 			requestMap.Set("scope", *scopeParameter)
 		}

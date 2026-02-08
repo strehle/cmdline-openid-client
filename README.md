@@ -88,6 +88,7 @@ Flags:
       -sso              Use sso resource flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
       -provider_name    Provider name for token-exchange.
+      -request_query    Add additional request query parameters to token request in format key=value&key2=value2.
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.

@@ -198,6 +198,12 @@ func main() {
 		if *clientSecret == "" {
 			*clientSecret = os.Getenv("OPENID_SECRET")
 		}
+		if *pin == "" {
+			*pin = os.Getenv("OPENID_PIN")
+		}
+		if *requestQuery == "" {
+			*requestQuery = os.Getenv("OPENID_QUERY")
+		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {

@@ -95,14 +95,16 @@ Flags:
 ```
 
 ### How to test in automation without showing secrets
-In environments with outlog to logs or others it might be needed to hide the secrets and/or client details.
+In environments where all logs or outputs are written to log file, it might be needed to hide the secrets and/or client details.
 There are some environment variables, which will be used if set. A variable passed to the command itself always as prio before the
 environment, but you can also mix input parameters and environment.
 
 * OPENID_ISSUER The issuer of the OIDC server. Useful if you re-use a command often to omit it from a command. 
 * OPENID_ID The client_id parameter.
 * OPENID_SECRET The client_secret parameter.
+* OPENID_PIN The pin for the client_tls or client_jwt parameter.
 * OPENID_FORMAT The format of the access_token. Possible values are jwt or opaque.
+* OPENID_QUERY Additional query parameters for the token request in format key=value&key2=value2. Useful to set custom parameters for token request, e.g. for token exchange or other custom parameters.
 
 Example
 ```text

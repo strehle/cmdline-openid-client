@@ -70,7 +70,7 @@ Flags:
       -introspect       Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.
       -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
       -token            Input token for token introspect and token-exchange calls.
-      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque
+      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter.
       -app_tid          Optional parameter for IAS multi-tenant applications.
       -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password
       -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt
@@ -88,20 +88,26 @@ Flags:
       -sso              Use sso resource flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
       -provider_name    Provider name for token-exchange.
+      -request_query    Add additional request query parameters to token request in format key=value&key2=value2.
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.
 ```
 
 ### How to test in automation without showing secrets
-In environments with outlog to logs or others it might be needed to hide the secrets and/or client details.
+In environments where all logs or outputs are written to log file, it might be needed to hide the secrets and/or client details.
+Another use case is to use the tool in automation, e.g. in CI/CD pipelines, where you do not want to pass secrets as parameters but as environment variables.
+Finally, it can be also useful to set some default values for often used parameters in manual execution, e.g. the issuer or client_id, to avoid passing them every time in command line.
+
 There are some environment variables, which will be used if set. A variable passed to the command itself always as prio before the
 environment, but you can also mix input parameters and environment.
 
 * OPENID_ISSUER The issuer of the OIDC server. Useful if you re-use a command often to omit it from a command. 
 * OPENID_ID The client_id parameter.
 * OPENID_SECRET The client_secret parameter.
+* OPENID_PIN The pin for the client_tls or client_jwt parameter.
 * OPENID_FORMAT The format of the access_token. Possible values are jwt or opaque.
+* OPENID_QUERY Additional query parameters for the token request in format key=value&key2=value2. Useful to set custom parameters for token request, e.g. for token exchange or other custom parameters.
 
 Example
 ```text

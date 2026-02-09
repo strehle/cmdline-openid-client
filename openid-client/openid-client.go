@@ -92,6 +92,7 @@ func main() {
 			"      -sso              Token-Exchange resource SSO flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
 			"      -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
+			"      -request_query    Add additional request query parameters to token request in format key=value&key2=value2.\n" +
 			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
@@ -141,6 +142,7 @@ func main() {
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
 	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
 	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
+	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -195,6 +197,15 @@ func main() {
 		}
 		if *clientSecret == "" {
 			*clientSecret = os.Getenv("OPENID_SECRET")
+		}
+		if *pin == "" {
+			*pin = os.Getenv("OPENID_PIN")
+		}
+		if *requestQuery == "" {
+			*requestQuery = os.Getenv("OPENID_QUERY")
+		}
+		if *tokenFormatParameter == "" {
+			*tokenFormatParameter = os.Getenv("OPENID_FORMAT")
 		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
@@ -370,18 +381,8 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	var envFormat = *tokenFormatParameter
-	if *tokenFormatParameter == "" {
-		envFormat = os.Getenv("OPENID_FORMAT")
-		if envFormat == "" && *tokenFormatParameter == "" {
-			*tokenFormatParameter = "opaque"
-		}
-	}
-	if *tokenFormatParameter != "" && envFormat == "" && *doCfCall == false {
+	if *tokenFormatParameter != "" {
 		requestMap.Set("token_format", *tokenFormatParameter)
-	} else if envFormat != "" {
-		requestMap.Set("token_format", envFormat)
-		*tokenFormatParameter = envFormat
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)
@@ -404,6 +405,15 @@ func main() {
 	}
 	if *resourceParam != "" {
 		requestMap.Add("resource", *resourceParam)
+	}
+	if *requestQuery != "" {
+		requestQueryParams := strings.Split(*requestQuery, "&")
+		for _, param := range requestQueryParams {
+			keyValue := strings.SplitN(param, "=", 2)
+			if len(keyValue) == 2 {
+				requestMap.Set(keyValue[0], keyValue[1])
+			}
+		}
 	}
 
 	if *command != "" {

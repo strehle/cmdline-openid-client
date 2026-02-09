@@ -96,6 +96,9 @@ Flags:
 
 ### How to test in automation without showing secrets
 In environments where all logs or outputs are written to log file, it might be needed to hide the secrets and/or client details.
+Another use case is to use the tool in automation, e.g. in CI/CD pipelines, where you do not want to pass secrets as parameters but as environment variables.
+Finally, it can be also useful to set some default values for often used parameters in manual execution, e.g. the issuer or client_id, to avoid passing them every time in command line.
+
 There are some environment variables, which will be used if set. A variable passed to the command itself always as prio before the
 environment, but you can also mix input parameters and environment.
 

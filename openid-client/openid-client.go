@@ -204,6 +204,9 @@ func main() {
 		if *requestQuery == "" {
 			*requestQuery = os.Getenv("OPENID_QUERY")
 		}
+		if *tokenFormatParameter == "" {
+			*tokenFormatParameter = os.Getenv("OPENID_FORMAT")
+		}
 		if *issEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {
@@ -378,18 +381,8 @@ func main() {
 		requestMap.Set("client_assertion", privateKeyJwt)
 	}
 	var verbose = *isVerbose
-	var envFormat = *tokenFormatParameter
-	if *tokenFormatParameter == "" {
-		envFormat = os.Getenv("OPENID_FORMAT")
-		if envFormat == "" && *tokenFormatParameter == "" {
-			*tokenFormatParameter = "opaque"
-		}
-	}
-	if *tokenFormatParameter != "" && envFormat == "" && *doCfCall == false {
+	if *tokenFormatParameter != "" {
 		requestMap.Set("token_format", *tokenFormatParameter)
-	} else if envFormat != "" {
-		requestMap.Set("token_format", envFormat)
-		*tokenFormatParameter = envFormat
 	}
 	if *appTid != "" {
 		requestMap.Set("app_tid", *appTid)

@@ -296,7 +296,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	return idToken, refreshToken
 }
 
-func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, provider oidc.Provider) OpenIdToken {
+func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, tokenEndpointUrl string) OpenIdToken {
 	var myToken OpenIdToken
 	vals := url.Values{}
 	vals.Set("grant_type", "refresh_token")
@@ -315,7 +315,7 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		vals.Set("client_assertion", privateKeyJwt)
 	}
-	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
+	req, requestError := http.NewRequest("POST", tokenEndpointUrl, strings.NewReader(vals.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -348,10 +348,10 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 	return myToken
 }
 
-func HandleClientCredential(request url.Values, bearerToken string, provider oidc.Provider, tlsClient http.Client, verbose bool) string {
+func HandleClientCredential(request url.Values, bearerToken string, tokenEndpointUrl string, tlsClient http.Client, verbose bool) string {
 	refreshToken := ""
 	request.Set("grant_type", "client_credentials")
-	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	req, requestError := http.NewRequest("POST", tokenEndpointUrl, strings.NewReader(request.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -391,10 +391,10 @@ func HandleClientCredential(request url.Values, bearerToken string, provider oid
 	return refreshToken
 }
 
-func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "password")
-	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(request.Encode()))
+	req, requestError := http.NewRequest("POST", tokenEndpointUrl, strings.NewReader(request.Encode()))
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -418,10 +418,15 @@ func HandlePasswordGrant(request url.Values, provider oidc.Provider, tlsClient h
 			fmt.Println(string(jsonStr))
 		} else {
 			if verbose {
+				fmt.Println("ID Token: " + myToken.IdToken)
 				fmt.Println("Access Token: " + myToken.AccessToken)
 				fmt.Println("Refresh Token: " + myToken.RefreshToken)
 			} else {
-				fmt.Println(myToken.AccessToken)
+				if myToken.IdToken != "" {
+					fmt.Println(myToken.IdToken)
+				} else {
+					fmt.Println(myToken.AccessToken)
+				}
 			}
 			oidctoken = myToken
 		}

@@ -189,7 +189,7 @@ func main() {
 			*clientID = uaaConfig.UAAOAuthClient
 			*clientSecret = uaaConfig.UAAOAuthClientSecret
 		}
-		if *issEndPoint == "" {
+		if *issEndPoint == "" && *urlEndPoint == "" {
 			*issEndPoint = os.Getenv("OPENID_ISSUER")
 		}
 		if *clientID == "" {
@@ -207,7 +207,7 @@ func main() {
 		if *tokenFormatParameter == "" {
 			*tokenFormatParameter = os.Getenv("OPENID_FORMAT")
 		}
-		if *issEndPoint == "" {
+		if *issEndPoint == "" && *urlEndPoint == "" {
 			log.Fatal("issuer is required to run this command")
 		} else if *clientID == "" {
 			log.Fatal("client_id is required to run this command")
@@ -430,7 +430,7 @@ func main() {
 			requestMap.Set("refresh_expiry", *refreshExpiry)
 		}
 		if *command == "client_credentials" {
-			client.HandleClientCredential(requestMap, *bearerToken, *provider, *tlsClient, verbose)
+			client.HandleClientCredential(requestMap, *bearerToken, claims.TokenEndPoint, *tlsClient, verbose)
 		} else if *command == "password" {
 			if *userName == "" {
 				log.Fatal("username is required to run this command")
@@ -440,7 +440,7 @@ func main() {
 				log.Fatal("password is required to run this command")
 			}
 			requestMap.Set("password", *userPassword)
-			var responseToken = client.HandlePasswordGrant(requestMap, *provider, *tlsClient, verbose)
+			var responseToken = client.HandlePasswordGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			if *doCfCall {
 				cf.WriteUaaConfig(*issEndPoint, responseToken)
 			}
@@ -453,7 +453,7 @@ func main() {
 				refreshToken = *assertionToken
 			}
 			var bSilent = (*resourceSso || *doRefresh) && !verbose
-			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, *provider)
+			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)
@@ -501,6 +501,12 @@ func main() {
 				}
 			}
 		} else if *command == "jwt-bearer" {
+			if *resourceSso {
+				requestMap.Del("resource")
+				requestMap.Del("requested_token_type")
+				requestMap.Set("refresh_expiry", "0")
+				requestMap.Set("token_format", "opaque")
+			}
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 			if *assertionToken == "" {
 				log.Fatal("assertion parameter not set. Needed to pass it for JWT bearer")
@@ -510,6 +516,19 @@ func main() {
 			if *doCfCall {
 				fmt.Println(jwtBearerTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, jwtBearerTokenResponse)
+			} else if *resourceSso && jwtBearerTokenResponse.AccessToken != "" {
+				requestMap.Del("assertion")
+				requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+				requestMap.Set("resource", "urn:sap:identity:sso")
+				requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
+				requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+				requestMap.Set("subject_token", jwtBearerTokenResponse.AccessToken)
+				var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+				if exchangedTokenResponse.AccessToken != "" {
+					fmt.Println(exchangedTokenResponse.AccessToken)
+				} else {
+					fmt.Println(exchangedTokenResponse.IdToken)
+				}
 			} else if jwtBearerTokenResponse.IdToken != "" {
 				fmt.Println(jwtBearerTokenResponse.IdToken)
 			} else {
@@ -588,7 +607,7 @@ func main() {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, *provider)
+			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)

@@ -365,8 +365,11 @@ func HandleClientCredential(request url.Values, bearerToken string, tokenEndpoin
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if decodeError := json.NewDecoder(resp.Body).Decode(&result); decodeError != nil {
+		log.Fatal(decodeError)
+	}
 	if result != nil {
 		jsonStr, marshalError := json.Marshal(result)
 		if marshalError != nil {
@@ -405,8 +408,11 @@ func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, tlsClient 
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if decodeError := json.NewDecoder(resp.Body).Decode(&result); decodeError != nil {
+		log.Fatal(decodeError)
+	}
 	if result != nil {
 		jsonStr, marshalError := json.Marshal(result)
 		if marshalError != nil {

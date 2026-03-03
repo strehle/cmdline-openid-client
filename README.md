@@ -1,9 +1,9 @@
  # SAP Cloud Identity Services - openid-client
  
-This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC complaint serverr, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
+This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC compliant server, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
 The API documentation is available here: https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/openid-connect  
 
-The execution will open a port on you localhost machine. Please ensure that this port is usable. In addition, you need to specify the redirect_uri in your OIDC server,
+The execution will open a port on your localhost machine. Please ensure that this port is usable. In addition, you need to specify the redirect_uri in your OIDC server,
 e.g. http://localhost:8080/callback. If you set port 9002, expect redirect_uri http://localhost:9002/callback
 
 ### How to build the project
@@ -46,7 +46,7 @@ openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111
 ### How to run in detail
 ```text
 Usage: openid-client <command> <flags>
-       This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:
+       This is a CLI to generate tokens from an OpenID Connect (OIDC) compliant server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
 
 Command: (authorization_code is default)
@@ -68,7 +68,7 @@ Command: (authorization_code is default)
 
 Flags:
       -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token
-      -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.
+      -url              Generic endpoint for request. Used if issuer is not OIDC compliant with support of discovery endpoint.
       -cf               Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.
       -client_id        OIDC client ID. This is a mandatory flag.
       -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.
@@ -120,7 +120,7 @@ In environments where all logs or outputs are written to log file, it might be n
 Another use case is to use the tool in automation, e.g. in CI/CD pipelines, where you do not want to pass secrets as parameters but as environment variables.
 Finally, it can be also useful to set some default values for often used parameters in manual execution, e.g. the issuer or client_id, to avoid passing them every time in command line.
 
-There are some environment variables, which will be used if set. A variable passed to the command itself always as prio before the
+There are some environment variables, which will be used if set. A variable passed to the command itself always has priority before the
 environment, but you can also mix input parameters and environment.
 
 * OPENID_ISSUER The issuer of the OIDC server. Useful if you re-use a command often to omit it from a command. 

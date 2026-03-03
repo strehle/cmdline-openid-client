@@ -621,6 +621,26 @@ func main() {
 				requestMap.Del("client_id")
 			}
 			client.HandleTokenIntrospect(requestMap, *tokenInput, claims.IntroSpectEndpoint, *tlsClient, verbose)
+		} else if *command == "revoke" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. ")
+			}
+			if *clientID != "" && *clientID != "T000000" {
+				requestMap.Set("client_id", *clientID)
+			} else {
+				requestMap.Del("client_id")
+			}
+			client.HandleTokenRevocation(requestMap, *tokenInput, claims.TokenEndPoint, *tlsClient, verbose)
+		} else if *command == "userinfo" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for validation")
+			}
+			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
+		} else if *command == "token-list" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for validation")
+			}
+			client.HandleTokenList(requestMap, *tokenInput, claims.TokenEndPoint, *tlsClient, verbose)
 		} else if *command == "sso" {
 			client.HandleSsoFlow(*ssoTokenValue, *redirectUri, *spName, *provider)
 		} else if *command == "jwks" {

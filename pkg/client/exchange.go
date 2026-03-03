@@ -285,9 +285,8 @@ func HandleTokenRevocation(request url.Values, token string, tokenEndpoint strin
 	return resultString
 }
 
-func HandleUserInfo(request url.Values, token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	request.Set("token", token)
-	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
+func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
+	req, requestError := http.NewRequest("GET", tokenEndpoint, nil)
 	if requestError != nil {
 		log.Fatal(requestError)
 	}

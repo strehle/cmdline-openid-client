@@ -635,7 +635,7 @@ func main() {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
 			}
-			client.HandleUserInfo(requestMap, *tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
+			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
 		} else if *command == "token-list" {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")

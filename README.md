@@ -37,8 +37,8 @@ Using client certificate, e.g. created in IAS application section
 ```text
 openid-client client_credentials -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_tls ./final_result.p12 -pin Test1234
 ```
-#### Authroization Code Flow
-Usin Authroization code flow with PKCE and public client, e.g. created in IAS application section
+#### Authorization Code Flow
+Using Authorization code flow with PKCE and public client, e.g. created in IAS application section
 ```text
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -scope openid -export id_token
 ```

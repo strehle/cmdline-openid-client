@@ -77,6 +77,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
@@ -113,6 +114,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
@@ -149,6 +151,7 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
@@ -194,6 +197,7 @@ func HandlePasscode(issuer string, tlsClient http.Client, verbose bool) string {
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
@@ -227,6 +231,7 @@ func HandleTokenIntrospect(request url.Values, token string, tokenEndpoint strin
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	var resultString string
 	json.NewDecoder(resp.Body).Decode(&result)
@@ -256,10 +261,10 @@ func HandleTokenRevocation(request url.Values, token string, tokenEndpoint strin
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
-	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	var resultString string
 	json.NewDecoder(resp.Body).Decode(&result)
@@ -291,10 +296,10 @@ func HandleUserInfo(request url.Values, token string, tokenEndpoint string, tlsC
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
-	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result map[string]interface{}
 	var resultString string
 	json.NewDecoder(resp.Body).Decode(&result)
@@ -324,10 +329,10 @@ func HandleTokenList(request url.Values, token string, tokenEndpoint string, tls
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
-	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
+	defer resp.Body.Close()
 	var result []interface{}
 	var resultString string
 	json.NewDecoder(resp.Body).Decode(&result)

@@ -109,7 +109,7 @@ Flags:
       -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
       -provider_name    Provider name for token-exchange.
       -request_query    Add additional request query parameters to token request in format key=value&key2=value2.
-      -export           Return only single from token request. Possible values are: id_token, access_token or refresh_token
+      -export           Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.

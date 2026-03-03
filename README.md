@@ -26,14 +26,31 @@ On an OS with make environment, simply execute
 ```text
 make
 ```
-### How to test
+### How to run in short examples
+
+#### Client Credentials Flow
+Using client secret, e.g. created in IAS application section
+```text
+openid-client client_credentials -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_secret your-secret
+```
+Using client certificate, e.g. created in IAS application section
+```text
+openid-client client_credentials -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_tls ./final_result.p12 -pin Test1234
+```
+#### Authroization Code Flow
+Usin Authroization code flow with PKCE and public client, e.g. created in IAS application section
+```text
+openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -scope openid -export id_token
+```
+
+### How to run in detail
 ```text
 Usage: openid-client <command> <flags>
        This is a CLI to generate tokens from an OpenID Connect (OIDC) complaint server. Create a service provider/application in the OIDC server with call back url:
        http://localhost:<port>/callback and set below flags to get an ID token
 
 Command: (authorization_code is default)
-       authorization_code Perform authorization code flow.
+       authorization_code Perform authorization code flow. Default command if no command is set. If you use this command, the tool will open a browser window to perform the login and consent. After successful login, the token will be shown in the CLI output.
        client_credentials Perform client credentials flow.
        password           Perform resource owner flow, also known as password flow.
        token-exchange     Perform OAuth2 Token Exchange (RFC 8693).
@@ -42,6 +59,9 @@ Command: (authorization_code is default)
        passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.
        idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.
        introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.
+       userinfo           Perform OIDC Userinfo Endpoint Call. Need only token input parameter but no client authentication.
+       token-list         Perform /token/list Endpoint Call. Need token input parameter.
+       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
        version            Show version.
        help               Show this help for more details.
@@ -89,12 +109,13 @@ Flags:
       -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
       -provider_name    Provider name for token-exchange.
       -request_query    Add additional request query parameters to token request in format key=value&key2=value2.
+      -export           Return only single from token request. Possible values are: id_token, access_token or refresh_token
       -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -v                Verbose. Show more details about calls.
       -h                Show this help for more details.
 ```
 
-### How to test in automation without showing secrets
+### How to run in automation without showing secrets
 In environments where all logs or outputs are written to log file, it might be needed to hide the secrets and/or client details.
 Another use case is to use the tool in automation, e.g. in CI/CD pipelines, where you do not want to pass secrets as parameters but as environment variables.
 Finally, it can be also useful to set some default values for often used parameters in manual execution, e.g. the issuer or client_id, to avoid passing them every time in command line.

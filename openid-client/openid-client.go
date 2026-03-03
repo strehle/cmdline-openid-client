@@ -46,6 +46,9 @@ func main() {
 			"       passcode           Retrieve user passcode from X509 user authentication. Need user_tls for user authentication.\n" +
 			"       idp_token          Retrieve trusted IdP token. Need assertion for user trust and client authentication.\n" +
 			"       introspect         Perform OAuth2 Introspection Endpoint Call. Need token input parameter.\n" +
+			"       userinfo           Perform OIDC Userinfo Endpoint Call. Need only token input parameter but no client authentication.\n" +
+			"       token-list         Perform /token/list Endpoint Call. Need token input parameter.\n" +
+			"       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.\n" +
 			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
@@ -93,6 +96,7 @@ func main() {
 			"      -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
 			"      -provider_name    Provider name for token-exchange.\n" +
 			"      -request_query    Add additional request query parameters to token request in format key=value&key2=value2.\n" +
+			"      -export           Return only single from token request. Possible values are: id_token, access_token or refresh_token.\n" +
 			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -v                Verbose. Show more details about calls.\n" +
 			"      -h                Show this help for more details.")
@@ -143,6 +147,7 @@ func main() {
 	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
 	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
+	var exportParam = flag.String("export", "", "Return only single from token request. id_token, access_token or refresh_token.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -166,7 +171,7 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
-	case "passcode", "introspect":
+	case "passcode", "introspect", "revoke", "userinfo", "token-list":
 		if *clientID == "" {
 			*clientID = os.Getenv("OPENID_ID")
 		}
@@ -222,6 +227,7 @@ func main() {
 		EndSessionEndpoint string `json:"end_session_endpoint"`
 		TokenEndPoint      string `json:"token_endpoint"`
 		IntroSpectEndpoint string `json:"introspection_endpoint,omitempty"`
+		UserInfoEndpoint   string `json:"userinfo_endpoint,omitempty"`
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
@@ -231,6 +237,8 @@ func main() {
 		if *urlEndPoint != "" && *command != "" {
 			claims.TokenEndPoint = *urlEndPoint
 			claims.AuthorizeEndpoint = *urlEndPoint
+			claims.IntroSpectEndpoint = *urlEndPoint
+			claims.UserInfoEndpoint = *urlEndPoint
 			claims.EndSessionEndpoint = ""
 		} else {
 			log.Fatal(oidcError)
@@ -443,6 +451,16 @@ func main() {
 			var responseToken = client.HandlePasswordGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
 			if *doCfCall {
 				cf.WriteUaaConfig(*issEndPoint, responseToken)
+			} else {
+				if *exportParam != "" {
+					showResponse(*exportParam, responseToken)
+				} else {
+					if responseToken.IdToken != "" {
+						fmt.Println(responseToken.IdToken)
+					} else {
+						fmt.Println(responseToken.AccessToken)
+					}
+				}
 			}
 		} else if *command == "refresh" {
 			if *tokenInput == "" && *assertionToken == "" {
@@ -458,7 +476,11 @@ func main() {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)
 			} else {
-				fmt.Println(newRefresh.RefreshToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, newRefresh)
+				} else {
+					fmt.Println(newRefresh.RefreshToken)
+				}
 			}
 		} else if *command == "token-exchange" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
@@ -494,10 +516,14 @@ func main() {
 				fmt.Println(exchangedTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, exchangedTokenResponse)
 			} else {
-				if exchangedTokenResponse.IdToken != "" {
-					fmt.Println(exchangedTokenResponse.IdToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, exchangedTokenResponse)
 				} else {
-					fmt.Println(exchangedTokenResponse.AccessToken)
+					if exchangedTokenResponse.IdToken != "" {
+						fmt.Println(exchangedTokenResponse.IdToken)
+					} else {
+						fmt.Println(exchangedTokenResponse.AccessToken)
+					}
 				}
 			}
 		} else if *command == "jwt-bearer" {
@@ -524,15 +550,27 @@ func main() {
 				requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 				requestMap.Set("subject_token", jwtBearerTokenResponse.AccessToken)
 				var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-				if exchangedTokenResponse.AccessToken != "" {
-					fmt.Println(exchangedTokenResponse.AccessToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, exchangedTokenResponse)
 				} else {
-					fmt.Println(exchangedTokenResponse.IdToken)
+					if exchangedTokenResponse.AccessToken != "" {
+						fmt.Println(exchangedTokenResponse.AccessToken)
+					} else {
+						fmt.Println(exchangedTokenResponse.IdToken)
+					}
 				}
 			} else if jwtBearerTokenResponse.IdToken != "" {
-				fmt.Println(jwtBearerTokenResponse.IdToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, jwtBearerTokenResponse)
+				} else {
+					showResponse("id_token", jwtBearerTokenResponse)
+				}
 			} else {
-				fmt.Println(jwtBearerTokenResponse.AccessToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, jwtBearerTokenResponse)
+				} else {
+					showResponse("access_token", jwtBearerTokenResponse)
+				}
 			}
 		} else if *command == "saml-bearer" {
 			requestMap.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
@@ -541,7 +579,11 @@ func main() {
 			}
 			requestMap.Set("assertion", *assertionToken)
 			var samlBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			fmt.Println(samlBearerTokenResponse.AccessToken)
+			if *exportParam != "" {
+				showResponse(*exportParam, samlBearerTokenResponse)
+			} else {
+				showResponse("access_token", samlBearerTokenResponse)
+			}
 			if *doCfCall {
 				cf.WriteUaaConfig(*issEndPoint, samlBearerTokenResponse)
 			}
@@ -579,6 +621,26 @@ func main() {
 				requestMap.Del("client_id")
 			}
 			client.HandleTokenIntrospect(requestMap, *tokenInput, claims.IntroSpectEndpoint, *tlsClient, verbose)
+		} else if *command == "revoke" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. ")
+			}
+			if *clientID != "" && *clientID != "T000000" {
+				requestMap.Set("client_id", *clientID)
+			} else {
+				requestMap.Del("client_id")
+			}
+			client.HandleTokenRevocation(requestMap, *tokenInput, claims.TokenEndPoint, *tlsClient, verbose)
+		} else if *command == "userinfo" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for validation")
+			}
+			client.HandleUserInfo(requestMap, *tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
+		} else if *command == "token-list" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for validation")
+			}
+			client.HandleTokenList(requestMap, *tokenInput, claims.TokenEndPoint, *tlsClient, verbose)
 		} else if *command == "sso" {
 			client.HandleSsoFlow(*ssoTokenValue, *redirectUri, *spName, *provider)
 		} else if *command == "jwks" {
@@ -600,10 +662,16 @@ func main() {
 		if *resourceParam != "" {
 			requestMap.Set("resource", *resourceParam)
 		}
-		var bSilent = (*resourceSso || *doRefresh) && !verbose
-		var idToken, refreshToken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var refreshToken = oidctoken.RefreshToken
+		var idToken = oidctoken.IdToken
+		var outputWritten = false
+		if verbose == true {
+			outputWritten = true
+		}
 		if *doRefresh {
-			if refreshToken == "" {
+			if oidctoken.RefreshToken == "" {
 				log.Println("No refresh token received.")
 				return
 			}
@@ -612,7 +680,12 @@ func main() {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)
 			} else {
-				fmt.Println(newRefresh.RefreshToken)
+				if *exportParam != "" {
+					showResponse(*exportParam, newRefresh)
+				} else {
+					showResponse("refresh_token", newRefresh)
+				}
+				outputWritten = true
 			}
 			refreshToken = newRefresh.RefreshToken
 			idToken = newRefresh.IdToken
@@ -632,6 +705,7 @@ func main() {
 				fmt.Println("Response from endpoint /exchange/corporateidp")
 			}
 			fmt.Println(string(data))
+			outputWritten = true
 		}
 		if *resourceSso {
 			// Set the requestedType to "access_token" so the caller knows which token type was requested.
@@ -657,16 +731,25 @@ func main() {
 			}
 
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
-			if exchangedTokenResponse.AccessToken != "" {
-				fmt.Println(exchangedTokenResponse.AccessToken)
+			if *exportParam != "" {
+				showResponse(*exportParam, exchangedTokenResponse)
 			} else {
-				fmt.Println(exchangedTokenResponse.IdToken)
+				if exchangedTokenResponse.AccessToken != "" {
+					fmt.Println(exchangedTokenResponse.AccessToken)
+				} else {
+					fmt.Println(exchangedTokenResponse.IdToken)
+				}
 			}
+			outputWritten = true
 		}
 		if *doIntrospect && idToken != "" && claims.IntroSpectEndpoint != "" {
 			requestMap := url.Values{}
 			requestMap.Set("client_id", *clientID)
 			client.HandleTokenIntrospect(requestMap, idToken, claims.IntroSpectEndpoint, *tlsClient, verbose)
+			outputWritten = true
+		}
+		if outputWritten == false {
+			showResponse(*exportParam, oidctoken)
 		}
 	}
 }
@@ -676,5 +759,15 @@ func showVersion() {
 		fmt.Println("openid-client version:", version, "commit:", commit, "built at:", date)
 	} else {
 		fmt.Println("openid-client version:", version, "commit:", commit)
+	}
+}
+
+func showResponse(export string, oidcresponse client.OpenIdToken) {
+	if (export == "id_token") && oidcresponse.IdToken != "" {
+		fmt.Println(oidcresponse.IdToken)
+	} else if (export == "access_token") && oidcresponse.AccessToken != "" {
+		fmt.Println(oidcresponse.AccessToken)
+	} else if (export == "refresh_token") && oidcresponse.RefreshToken != "" {
+		fmt.Println(oidcresponse.RefreshToken)
 	}
 }

@@ -63,10 +63,8 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) (string, string) {
-
-	refreshToken := ""
-	idToken := ""
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) OpenIdToken {
+	var oidctoken OpenIdToken
 	clientID := request.Get("client_id")
 	authrizationScope := "openid"
 	callbackEndpoint := &callbackEndpoint{}
@@ -149,7 +147,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	default:
 		cmd = nil
 		fmt.Printf("unsupported platform")
-		return "", ""
+		return oidctoken
 
 	}
 	cmdErorr := cmd.Start()
@@ -235,17 +233,18 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 		} else {
 			// access token
 			stanardToken.AccessToken = myToken.AccessToken
-			idToken = myToken.IdToken
+			oidctoken.IdToken = myToken.IdToken
 			// refresh token
 			stanardToken.RefreshToken = myToken.RefreshToken
-			refreshToken = myToken.RefreshToken
+			oidctoken.RefreshToken = myToken.RefreshToken
+			oidctoken.AccessToken = myToken.AccessToken
 			if verbose {
 				// Getting now the userInfo
 				fmt.Println("Call now UserInfo with access_token")
 				userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
 				if err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 				oidcConfig := &oidc.Config{
 					ClientID: clientID,
@@ -253,28 +252,28 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 				idToken, err := provider.Verifier(oidcConfig).Verify(context.TODO(), myToken.IdToken)
 				if err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 
 				var outProfile map[string]interface{}
 				var outUserInfo map[string]interface{}
 				if err := idToken.Claims(&outProfile); err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 				if err := userInfo.Claims(&outUserInfo); err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 				data, err := json.MarshalIndent(outProfile, "", "    ")
 				if err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 				data2, err := json.MarshalIndent(outUserInfo, "", "    ")
 				if err != nil {
 					log.Fatal(err)
-					return "", ""
+					return oidctoken
 				}
 				fmt.Println("Claims parsed out from id_token ")
 				fmt.Println(string(data))
@@ -293,7 +292,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 			log.Println("Error while getting ID token")
 		}
 	}
-	return idToken, refreshToken
+	return oidctoken
 }
 
 func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, tokenEndpointUrl string) OpenIdToken {
@@ -421,12 +420,6 @@ func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, tlsClient 
 				fmt.Println("ID Token: " + myToken.IdToken)
 				fmt.Println("Access Token: " + myToken.AccessToken)
 				fmt.Println("Refresh Token: " + myToken.RefreshToken)
-			} else {
-				if myToken.IdToken != "" {
-					fmt.Println(myToken.IdToken)
-				} else {
-					fmt.Println(myToken.AccessToken)
-				}
 			}
 			oidctoken = myToken
 		}

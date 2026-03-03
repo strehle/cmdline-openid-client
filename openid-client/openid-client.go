@@ -147,7 +147,7 @@ func main() {
 	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
 	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
-	var exportParam = flag.String("export", "", "Return only single from token request. id_token, access_token or refresh_token.")
+	var exportParam = flag.String("export", "", "Return only a single token from token request: id_token, access_token or refresh_token.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string

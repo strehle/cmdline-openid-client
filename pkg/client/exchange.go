@@ -256,6 +256,7 @@ func HandleTokenRevocation(request url.Values, token string, tokenEndpoint strin
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
+	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -290,6 +291,7 @@ func HandleUserInfo(request url.Values, token string, tokenEndpoint string, tlsC
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
+	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -322,6 +324,7 @@ func HandleTokenList(request url.Values, token string, tokenEndpoint string, tls
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
 	resp, clientError := tlsClient.Do(req)
+	defer resp.Body.Close()
 	if clientError != nil {
 		log.Fatal(clientError)
 	}

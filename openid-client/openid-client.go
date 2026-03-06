@@ -471,12 +471,14 @@ func main() {
 				refreshToken = *assertionToken
 			}
 			var bSilent = (*resourceSso || *doRefresh) && !verbose
-			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
+			var newRefresh, error = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)
 			} else {
-				if *exportParam != "" {
+				if error != nil {
+					fmt.Println(error)
+				} else if *exportParam != "" {
 					showResponse(*exportParam, newRefresh)
 				} else {
 					fmt.Println(newRefresh.RefreshToken)
@@ -675,7 +677,10 @@ func main() {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
+			var newRefresh, err = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
+			if err != nil {
+				log.Fatal(err)
+			}
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)

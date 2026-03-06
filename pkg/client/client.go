@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -295,8 +296,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	return oidctoken
 }
 
-func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, tokenEndpointUrl string) OpenIdToken {
+func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, tokenEndpointUrl string) (OpenIdToken, error) {
 	var myToken OpenIdToken
+	var errorString error
 	vals := url.Values{}
 	vals.Set("grant_type", "refresh_token")
 	vals.Set("refresh_token", existingRefresh)
@@ -339,12 +341,15 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 			fmt.Println("==========")
 		}
 		json.Unmarshal([]byte(result), &myToken)
+		if myToken.RefreshToken == "" {
+			errorString = errors.New(string(result))
+		}
 	} else {
 		if !bSilent {
 			showHttpError(*resp)
 		}
 	}
-	return myToken
+	return myToken, errorString
 }
 
 func HandleClientCredential(request url.Values, bearerToken string, tokenEndpointUrl string, tlsClient http.Client, verbose bool) string {

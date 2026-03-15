@@ -127,6 +127,8 @@ environment, but you can also mix input parameters and environment.
 * OPENID_ID The client_id parameter.
 * OPENID_SECRET The client_secret parameter.
 * OPENID_PIN The pin for the client_tls or client_jwt parameter.
+* OPENID_USER The username parameter for password grant flow.
+* OPENID_PASSWORD The password parameter for password grant flow.
 * OPENID_FORMAT The format of the access_token. Possible values are jwt or opaque.
 * OPENID_QUERY Additional query parameters for the token request in format key=value&key2=value2. Useful to set custom parameters for token request, e.g. for token exchange or other custom parameters.
 
@@ -137,4 +139,23 @@ openid-client client_credentials
 or with some information
 ```text
 openid-client client_credentials -client_id xxxxx
+```
+
+Example with username and password from environment variables:
+```text
+export OPENID_ISSUER=https://mytenant.accounts.ondemand.com
+export OPENID_ID=my-client-id
+export OPENID_SECRET=my-client-secret
+export OPENID_USER=my-username
+export OPENID_PASSWORD=my-password
+
+openid-client password
+```
+
+Or combining environment variables with command-line parameters:
+```text
+export OPENID_USER=my-username
+export OPENID_PASSWORD=my-password
+
+openid-client password -issuer https://mytenant.accounts.ondemand.com -client_id my-client-id -client_secret my-client-secret
 ```

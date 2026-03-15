@@ -441,6 +441,12 @@ func main() {
 			client.HandleClientCredential(requestMap, *bearerToken, claims.TokenEndPoint, *tlsClient, verbose)
 		} else if *command == "password" {
 			if *userName == "" {
+				*userName = os.Getenv("OPENID_USER")
+			}
+			if *userPassword == "" {
+				*userPassword = os.Getenv("OPENID_PASSWORD")
+			}
+			if *userName == "" {
 				log.Fatal("username is required to run this command")
 			}
 			requestMap.Set("username", *userName)

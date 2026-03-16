@@ -111,8 +111,8 @@ The `sso_token` parameter is added to the authorization request as a query param
 The easiest way to obtain and use an SSO token is through OIDC authentication with the `-sso` flag:
 
 ```bash
-# Step 1: Get an access token through any supported flow
-# Example: Client credentials
+# Step 1: Obtain an SSO token via interactive authorization code flow
+# Example: Authorization code flow with SSO token exchange
 SSO_TOKEN=$(openid-client authorization_code \
   -issuer https://mytenant.accounts.ondemand.com \
   -client_id my-client-id \

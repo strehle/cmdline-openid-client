@@ -39,7 +39,7 @@ This returns an opaque access token that serves as the SSO token.
 The SSO token is then used with the `/saml2/idp/sso` endpoint to establish a web session:
 
 ```
-GET {issuer}/saml2/idp/sso?sso_token={token}&redirect_uri={redirect}&sp={sp_name}
+GET {issuer}/saml2/idp/sso?sso_token={token}&redirect_uri={redirect}
 ```
 
 The tool automatically opens this URL in the default browser, creating an authenticated session.

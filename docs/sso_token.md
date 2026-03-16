@@ -384,8 +384,8 @@ openid-client token-exchange \
 
 ## Related Documentation
 
-- [Token Exchange Documentation](../token-exchange-doc.md)
-- [Client Authentication Methods](../client-auth-doc.md)
+- [Token Exchange Documentation](token-exchange-doc.md)
+- [Client Authentication Methods](client-auth-doc.md)
 - [IAS OAuth2 Documentation](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/openid-connect)
 
 ## Implementation Details

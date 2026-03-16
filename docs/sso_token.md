@@ -72,7 +72,7 @@ openid-client sso -issuer <ISSUER> -sso_token <TOKEN> -redirect_uri <REDIRECT> [
 # Assuming you already have an SSO token
 openid-client sso \
   -issuer https://mytenant.accounts.ondemand.com \
-  -sso_token "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -sso_token "abc123opaqueSsoTokenValue" \
   -redirect_uri "https://myapp.example.com/home"
 ```
 

@@ -424,7 +424,7 @@ Solution: Verify the PIN/password for your P12 file is correct.
 
 ## Related Documentation
 
-- [Client Authentication Methods](../client-auth-doc.md)
+- [Client Authentication Methods](client-auth-doc.md)
 - [IAS API Authentication](https://help.sap.com/docs/identity-authentication/identity-authentication/dev-configure-certificates-for-api-authentication)
 - [Certificate Authentication](https://help.sap.com/docs/identity-authentication/identity-authentication/passwordless-authentication#certificate-authentication)
 

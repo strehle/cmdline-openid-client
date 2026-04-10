@@ -129,7 +129,13 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	}
 	if request.Has("app_tid") {
 		query.Set("app_tid", request.Get("app_tid"))
-		query.Set("state", endsession+"?client_id="+clientID+"&app_tid="+request.Get("app_tid"))
+		stateUrl := endsession + "?client_id=" + clientID + "&app_tid=" + request.Get("app_tid")
+		if request.Has("post_logout_redirect_uri") {
+			stateUrl += "&post_logout_redirect_uri=" + url.QueryEscape(request.Get("post_logout_redirect_uri"))
+		}
+		query.Set("state", stateUrl)
+	} else if request.Has("post_logout_redirect_uri") {
+		query.Set("state", endsession+"?client_id="+clientID+"&post_logout_redirect_uri="+url.QueryEscape(request.Get("post_logout_redirect_uri")))
 	}
 	authzURL.RawQuery = query.Encode()
 

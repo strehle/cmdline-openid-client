@@ -42,6 +42,10 @@ Using Authorization code flow with PKCE and public client, e.g. created in IAS a
 ```text
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -scope openid -export id_token
 ```
+Using Authorization code flow with a post-logout redirect URI, so the browser is redirected to the given URI after the user logs out
+```text
+openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -post_logout https://your-app.example.com/logged-out
+```
 
 ### How to run in detail
 ```text
@@ -107,6 +111,7 @@ Flags:
       -sp               Service provider name parameter for sso command only.
       -sso              Use sso resource flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
+      -post_logout      Post logout redirect URI. Optional parameter used in the authorization_code flow. When set, the browser is redirected to this URI after the user logs out. The value is appended to the end_session_endpoint URL passed in the state parameter.
       -provider_name    Provider name for token-exchange.
       -request_query    Add additional request query parameters to token request in format key=value&key2=value2.
       -export           Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.

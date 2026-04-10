@@ -231,6 +231,14 @@ func main() {
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
+		insecureHttpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+		ctx = oidc.ClientContext(ctx, insecureHttpClient)
 	}
 	provider, oidcError := oidc.NewProvider(ctx, *issEndPoint)
 	if oidcError != nil {

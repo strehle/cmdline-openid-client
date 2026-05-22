@@ -37,7 +37,7 @@ go run github.com/strehle/cmdline-openid-client/openid-client@latest   # run wit
 `main()` inspects `os.Args[1]` — if it doesn't start with `-`, it is treated as a command string; remaining args are parsed by `flag`. The default command (empty string) is `authorization_code`.
 
 ### Request building
-All grant flows receive a `url.Values` (`requestMap`) pre-populated with `client_id`, `client_secret`, `client_assertion`, `token_format`, etc. Each `Handle*` function in `pkg/client` appends its `grant_type` and posts to the token endpoint.
+Request assembly is command-specific. Many commands start from a `url.Values` (`requestMap`) prepared in `main` with shared parameters such as `client_id`, `client_secret`, `client_assertion`, and `token_format`, then pass it into the relevant handler in `pkg/client`. Other flows are exceptions: for example, the refresh flow builds its own `url.Values` inside `HandleRefreshFlow` rather than reusing `requestMap`. Likewise, `grant_type` is not added uniformly in one place — depending on the command, it may be set in `main`, in the handler, or both, before the request is posted to the token endpoint.
 
 ### Client authentication precedence (in `main`)
 1. `-client_assertion` (external JWT) → sets `privateKeyJwt` (RFC 7523 / OAuth2 flavour — token from another provider)
@@ -49,7 +49,7 @@ All grant flows receive a `url.Values` (`requestMap`) pre-populated with `client
 Use `openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_result.p12 -passout pass:Test1234` to generate P12 files.
 
 ### OIDC provider / endpoint resolution
-`oidc.NewProvider` fetches the `.well-known/openid-configuration`. If that fails and `-url` is set, endpoints are set directly from `-url`. The `provider.Claims(&claims)` struct captures `authorization_endpoint`, `token_endpoint`, `introspection_endpoint`, `userinfo_endpoint`, and `end_session_endpoint`.
+`oidc.NewProvider` fetches the `.well-known/openid-configuration`. If discovery fails, direct endpoint fallback from `-url` is only used when `-url` is set and a non-empty command is being executed; it does not apply to the default authorization-code flow, which still relies on `oidc.NewProvider`. The `provider.Claims(&claims)` struct captures `authorization_endpoint`, `token_endpoint`, `introspection_endpoint`, `userinfo_endpoint`, and `end_session_endpoint`.
 
 ### Environment variables (override CLI flags when flag value is empty)
 | Var | Flag |

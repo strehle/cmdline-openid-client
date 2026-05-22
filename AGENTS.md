@@ -37,7 +37,7 @@ go run github.com/strehle/cmdline-openid-client/openid-client@latest   # run wit
 `main()` inspects `os.Args[1]` — if it doesn't start with `-`, it is treated as a command string; remaining args are parsed by `flag`. The default command (empty string) is `authorization_code`.
 
 ### Request building
-Request assembly is command-specific. Many commands start from a `url.Values` (`requestMap`) prepared in `main` with shared parameters such as `client_id`, `client_secret`, `client_assertion`, and `token_format`, then pass it into the relevant handler in `pkg/client`. Other flows are exceptions: for example, the refresh flow builds its own `url.Values` inside `HandleRefreshFlow` rather than reusing `requestMap`. Likewise, `grant_type` is not added uniformly in one place — depending on the command, it may be set in `main`, in the handler, or both, before the request is posted to the token endpoint.
+Request assembly is command-specific. Several non-authorization-code and non-refresh commands start from a `url.Values` (`requestMap`) prepared in `main` with shared parameters such as `client_id`, `client_secret`, `client_assertion`, and `token_format`, then pass it into the relevant handler in `pkg/client`. The authorization-code flow is an exception and builds its own params in `pkg/client/client.go`, and the refresh flow likewise constructs its own `url.Values` inside `HandleRefreshFlow` instead of reusing `requestMap`. Likewise, `grant_type` is not added uniformly in one place — depending on the command, it may be set in `main`, in the handler, or as part of a flow-specific parameter builder before the request is posted to the token endpoint.
 
 ### Client authentication precedence (in `main`)
 1. `-client_assertion` (external JWT) → sets `privateKeyJwt` (RFC 7523 / OAuth2 flavour — token from another provider)
@@ -65,7 +65,8 @@ Use `openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_resul
 
 ### IAS-specific conventions
 - `provider_name` is transformed to `resource=urn:sap:identity:application:provider:name:<name>` in the token request.
-- `-sso` adds `resource=urn:sap:identity:sso` + `requested_token_type=urn:ietf:params:oauth:token-type:access_token`. For `jwt-bearer` it also forces `refresh_expiry=0` and `token_format=opaque`.
+- `-sso` normally adds `resource=urn:sap:identity:sso` + `requested_token_type=urn:ietf:params:oauth:token-type:access_token`.
+- For `jwt-bearer`, `-sso` is a two-step flow: first run the JWT bearer grant without those SSO token-exchange parameters, while forcing `refresh_expiry=0` and `token_format=opaque`; then perform a second token-exchange request to obtain the SSO token.
 - `HandleCorpIdpExchangeFlow` rewrites `/oauth2/token` → `/oauth2/exchange/corporateidp`.
 - The `sso` command rewrites `/oauth2/authorize` → `/saml2/idp/sso`.
 - `HandleTokenRevocation` rewrites `/oauth2/token` → `/oauth2/revoke`.

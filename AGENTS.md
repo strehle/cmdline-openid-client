@@ -48,6 +48,17 @@ Request assembly is command-specific. Several non-authorization-code and non-ref
 
 Use `openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_result.p12 -passout pass:Test1234` to generate P12 files.
 
+### TLS client configuration
+Both the default `tlsClient` and the mTLS client are built with the same `tls.Config`. The `-tls_renegotiation` flag controls `tls.RenegotiationSupport` via the `tlsRenegotiationMode()` helper:
+
+| Flag value              | `tls` constant |
+|-------------------------|---|
+| `` (empty) / `once` / 1 | `RenegotiateOnceAsClient` (default) |
+| `never`    / 0          | `RenegotiateNever` |
+| `freely`   / 2          | `RenegotiateFreelyAsClient` |
+
+`-k` sets `InsecureSkipVerify: true` on both standard and mTLS clients uniformly.
+
 ### OIDC provider / endpoint resolution
 `oidc.NewProvider` fetches the `.well-known/openid-configuration`. If discovery fails, direct endpoint fallback from `-url` is only used when `-url` is set and a non-empty command is being executed; it does not apply to the default authorization-code flow, which still relies on `oidc.NewProvider`. The `provider.Claims(&claims)` struct captures `authorization_endpoint`, `token_endpoint`, `introspection_endpoint`, `userinfo_endpoint`, and `end_session_endpoint`.
 

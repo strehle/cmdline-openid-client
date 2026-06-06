@@ -55,7 +55,7 @@ func main() {
 			"\n" +
 			"Flags:\n" +
 			"      -issuer            IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
-			"      -url               Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.\n" +
+			"      -url               Generic endpoint for request. Used if issuer is not OIDC compliant with support of discovery endpoint.\n" +
 			"      -cf                Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.\n" +
 			"      -client_id         OIDC client ID. This is a mandatory flag.\n" +
 			"      -client_secret     OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +

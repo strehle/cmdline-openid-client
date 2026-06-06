@@ -99,7 +99,7 @@ func main() {
 			"      -request_query     Add additional request query parameters to token request in format key=value&key2=value2.\n" +
 			"      -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
 			"      -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
-			"      -tls_renegotiation TLS renegotiation mode. Possible values: never, once, freely. Default: once\n" +
+			"      -tls_renegotiation TLS renegotiation mode. Possible values: never (0), once (1), freely (2). Default: once\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
 			"      -h                 Show this help for more details.")
 	}

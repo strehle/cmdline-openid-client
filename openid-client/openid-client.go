@@ -801,12 +801,15 @@ func showResponse(export string, oidcresponse client.OpenIdToken) {
 }
 
 func tlsRenegotiationMode(mode string) tls.RenegotiationSupport {
-	switch strings.ToLower(mode) {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "", "once", "1":
+		return tls.RenegotiateOnceAsClient
 	case "never", "0":
 		return tls.RenegotiateNever
 	case "freely", "2":
 		return tls.RenegotiateFreelyAsClient
-	default: // "once" or empty
+	default:
+		log.Fatalf("invalid tls_renegotiation value %q; expected never|once|freely or 0|1|2", mode)
 		return tls.RenegotiateOnceAsClient
 	}
 }

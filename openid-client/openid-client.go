@@ -54,53 +54,54 @@ func main() {
 			"       help               Show this help for more details.\n" +
 			"\n" +
 			"Flags:\n" +
-			"      -issuer           IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
-			"      -url              Generic endpoint for request. Used if issuer is not OIDC complaint with support of discovery endpoint.\n" +
-			"      -cf               Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.\n" +
-			"      -client_id        OIDC client ID. This is a mandatory flag.\n" +
-			"      -client_secret    OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
-			"      -client_tls       P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
-			"      -client_jwt       P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
-			"      -client_jwt_key   Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
-			"      -client_jwt_kid   Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
-			"      -client_jwt_x5t   Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
-			"      -client_assertion External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.\n" +
-			"      -bearer           Own token to perform client API authentication. The value will be set in authorization header as bearer value.\n" +
-			"      -assertion        Input token for token exchanges, e.g. jwt-bearer or token-exchange and other token information endpoints.\n" +
-			"      -scope            OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
-			"      -nonce            OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.\n" +
-			"      -prompt           OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.\n" +
-			"      -max_age          OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. \n" +
-			"      -refresh          Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
-			"      -idp_token        Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
-			"      -idp_scope        OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
-			"      -introspect       Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
-			"      -refresh_expiry   Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
-			"      -token            Input token for token introspect, refresh flow and token-exchange calls.\n" +
-			"      -token_format     Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
-			"      -app_tid          Optional parameter for IAS multi-tenant applications.\n" +
-			"      -cmd              Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
-			"      -pin              PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
-			"      -port             Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
-			"      -login_hint       Request parameter login_hint passed to the Corporate IdP.\n" +
-			"      -origin           Use for UAA only. Create login_hint parameter for cf simulation calls.\n" +
-			"      -user_tls         P12 file for user mTLS authentication. The parameter is needed for the passcode command.\n" +
-			"      -username         User name for command password grant required, else optional.\n" +
-			"      -password         User password for command password grant required, else optional.\n" +
-			"      -subject_type     Token-Exchange subject type. Type of input assertion.\n" +
-			"      -resource         Token-Exchange custom resource parameter.\n" +
-			"      -requested_type   Token-Exchange requested type.\n" +
-			"      -redirect_uri     Redirect URL for the sso command only.\n" +
-			"      -sp               Service provider name parameter for sso command only.\n" +
-			"      -sso              Token-Exchange resource SSO flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
-			"      -sso_token        Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
-			"      -post_logout      Post logout redirect URI. Optional parameter used in authorization_code flow to redirect the browser after logout.\n" +
-			"      -provider_name    Provider name for token-exchange.\n" +
-			"      -request_query    Add additional request query parameters to token request in format key=value&key2=value2.\n" +
-			"      -export           Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
-			"      -k                Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
-			"      -v                Verbose. Show more details about calls.\n" +
-			"      -h                Show this help for more details.")
+			"      -issuer            IAS. Default is https://<tenant>.accounts.ondemand.com; XSUAA Default is: https://uaa.cf.eu10.hana.ondemand.com/oauth/token\n" +
+			"      -url               Generic endpoint for request. Used if issuer is not OIDC compliant with support of discovery endpoint.\n" +
+			"      -cf                Simulate cf command client. Use cf config.json for OIDC endpoints and store result after call. Allow to perform direct UAA actions and use of token in cf itself.\n" +
+			"      -client_id         OIDC client ID. This is a mandatory flag.\n" +
+			"      -client_secret     OIDC client secret. This is an optional flag and only needed for confidential clients.\n" +
+			"      -client_tls        P12 file for client mTLS authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
+			"      -client_jwt        P12 file for private_key_jwt authentication. This is an optional flag and only needed for confidential clients as replacement for client_secret.\n" +
+			"      -client_jwt_key    Private Key in PEM for private_key_jwt authentication. Use this parameter together with -client_jwt_kid. Replaces -client_jwt and -pin.\n" +
+			"      -client_jwt_kid    Key ID for private_key_jwt authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -client_jwt_x5t    Header for private_key_jwt X509 authentication. Use this parameter together with -client_jwt_key. Replaces -client_jwt and -pin, use value or path to X509 certificate.\n" +
+			"      -client_assertion  External client token to perform client authentication. Use this parameter instead of client_jwt or client_jwt_key parameters.\n" +
+			"      -bearer            Own token to perform client API authentication. The value will be set in authorization header as bearer value.\n" +
+			"      -assertion         Input token for token exchanges, e.g. jwt-bearer or token-exchange and other token information endpoints.\n" +
+			"      -scope             OIDC scope parameter. This is an optional flag, default is openid. If you set none, the parameter scope will be omitted in request.\n" +
+			"      -nonce             OIDC nonce parameter. This is an optional flag. If you do not set it, the parameter will be omitted in request.\n" +
+			"      -prompt            OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.\n" +
+			"      -max_age           OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. \n" +
+			"      -refresh           Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
+			"      -idp_token         Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
+			"      -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
+			"      -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
+			"      -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
+			"      -token             Input token for token introspect, refresh flow and token-exchange calls.\n" +
+			"      -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
+			"      -app_tid           Optional parameter for IAS multi-tenant applications.\n" +
+			"      -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
+			"      -pin               PIN to P12/PKCS12 file using -client_tls or -client_jwt \n" +
+			"      -port              Callback port. Open on localhost a port to retrieve the authorization code. Optional parameter, default: 8080\n" +
+			"      -login_hint        Request parameter login_hint passed to the Corporate IdP.\n" +
+			"      -origin            Use for UAA only. Create login_hint parameter for cf simulation calls.\n" +
+			"      -user_tls          P12 file for user mTLS authentication. The parameter is needed for the passcode command.\n" +
+			"      -username          User name for command password grant required, else optional.\n" +
+			"      -password          User password for command password grant required, else optional.\n" +
+			"      -subject_type      Token-Exchange subject type. Type of input assertion.\n" +
+			"      -resource          Token-Exchange custom resource parameter.\n" +
+			"      -requested_type    Token-Exchange requested type.\n" +
+			"      -redirect_uri      Redirect URL for the sso command only.\n" +
+			"      -sp                Service provider name parameter for sso command only.\n" +
+			"      -sso               Token-Exchange resource SSO flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
+			"      -sso_token         Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
+			"      -post_logout       Post logout redirect URI. Optional parameter used in authorization_code flow to redirect the browser after logout.\n" +
+			"      -provider_name     Provider name for token-exchange.\n" +
+			"      -request_query     Add additional request query parameters to token request in format key=value&key2=value2.\n" +
+			"      -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
+			"      -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
+			"      -tls_renegotiation TLS renegotiation mode. Possible values: never (0), once (1), freely (2). Default: once\n" +
+			"      -v                 Verbose. Show more details about calls.\n" +
+			"      -h                 Show this help for more details.")
 	}
 
 	var issEndPoint = flag.String("issuer", "", "OIDC Issuer URI")
@@ -150,6 +151,7 @@ func main() {
 	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
 	var exportParam = flag.String("export", "", "Return only a single token from token request: id_token, access_token or refresh_token.")
+	var tlsRenegotiation = flag.String("tls_renegotiation", "", "TLS renegotiation mode: never, once, freely. Default: once")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -236,6 +238,7 @@ func main() {
 		insecureHttpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
+					Renegotiation:      0,
 					InsecureSkipVerify: true,
 				},
 			},
@@ -262,7 +265,7 @@ func main() {
 	tlsClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				Renegotiation:      tls.RenegotiateOnceAsClient,
+				Renegotiation:      tlsRenegotiationMode(*tlsRenegotiation),
 				InsecureSkipVerify: *skipTlsVerification,
 			},
 		},
@@ -336,8 +339,9 @@ func main() {
 			tlsClient = &http.Client{
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						Renegotiation: tls.RenegotiateOnceAsClient,
-						Certificates:  []tls.Certificate{cert},
+						Renegotiation:      tlsRenegotiationMode(*tlsRenegotiation),
+						InsecureSkipVerify: *skipTlsVerification,
+						Certificates:       []tls.Certificate{cert},
 					},
 				},
 			}
@@ -793,5 +797,19 @@ func showResponse(export string, oidcresponse client.OpenIdToken) {
 		fmt.Println(oidcresponse.AccessToken)
 	} else if (export == "refresh_token") && oidcresponse.RefreshToken != "" {
 		fmt.Println(oidcresponse.RefreshToken)
+	}
+}
+
+func tlsRenegotiationMode(mode string) tls.RenegotiationSupport {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "", "once", "1":
+		return tls.RenegotiateOnceAsClient
+	case "never", "0":
+		return tls.RenegotiateNever
+	case "freely", "2":
+		return tls.RenegotiateFreelyAsClient
+	default:
+		log.Fatalf("invalid tls_renegotiation value %q; expected never|once|freely or 0|1|2", mode)
+		return tls.RenegotiateOnceAsClient
 	}
 }

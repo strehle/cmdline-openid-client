@@ -23,6 +23,19 @@ Example Usage
 openid-client -issuer <yourSCI> -client_id 11111111-your-client-11111111 -client_tls ./final_result.p12 -pin Test1234
 ```
 
+Some TLS servers require TLS renegotiation during the mTLS handshake. Use `-tls_renegotiation` to control this behaviour:
+
+| Value                | Behaviour |
+|----------------------|-----------|
+| `once` / 1 (default) | Allow the server to request renegotiation exactly once (`RenegotiateOnceAsClient`) |
+| `never` / 0          | Disable renegotiation entirely (`RenegotiateNever`) |
+| `freely` / 2         | Allow unlimited renegotiation requests (`RenegotiateFreelyAsClient`) |
+
+```bash
+# mTLS with renegotiation disabled
+openid-client client_credentials -issuer <yourSCI> -client_id <ID> -client_tls ./final_result.p12 -pin Test1234 -tls_renegotiation never
+```
+
 ## Private Key JWT
 
 In short, this term means a JWT created from a private key is used to authenticate a client. This standard has 2 approaches

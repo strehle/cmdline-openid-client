@@ -142,7 +142,7 @@ func main() {
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
-	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh or revoke")
+	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh, revoke, or decode")
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")

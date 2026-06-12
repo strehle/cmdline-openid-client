@@ -321,7 +321,7 @@ func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, v
 }
 
 func HandleDecodeJwt(token string, headerOnly bool, payloadOnly bool, raw bool) {
-	parts := strings.Split(token, ".")
+	parts := strings.Split(strings.TrimSpace(token), ".")
 	if len(parts) != 3 {
 		log.Fatalf("unsupported token format: decode only supports signed JWTs (JWS compact serialization, 3 parts); got %d parts", len(parts))
 	}

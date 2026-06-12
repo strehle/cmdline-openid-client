@@ -46,8 +46,8 @@ Using Authorization code flow with a post-logout redirect URI, so the browser is
 ```text
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -post_logout https://your-app.example.com/logged-out
 ```
-#### Decode a JWT
-Display both header and payload with colorized, formatted JSON (no server connection required). Note: this only decodes the JWT — it does **not** verify the signature or validate any claims.
+#### Decode a signed JWT (JWS)
+Display both header and payload with colorized, formatted JSON (no server connection required). Supports signed JWTs (JWS compact serialization) only — encrypted JWTs (JWE) are not supported. Note: this only decodes the token — it does **not** verify the signature or validate any claims.
 ```text
 openid-client decode -token <your-jwt>
 ```

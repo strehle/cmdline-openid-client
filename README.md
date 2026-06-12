@@ -81,7 +81,7 @@ Command: (authorization_code is default)
        token-list         Perform /token/list Endpoint Call. Need token input parameter.
        revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
-       decode             Decode a JWT and display header and payload as formatted, colorized JSON. No server connection needed. Does not verify the signature or validate claims.
+       decode             Decode a signed JWT (JWS) and display header and payload as formatted, colorized JSON. No server connection needed. Does not verify the signature or validate claims.
        version            Show version.
        help               Show this help for more details.
 
@@ -108,7 +108,7 @@ Flags:
       -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
       -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.
       -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
-      -token             Input token for token introspect and token-exchange calls.
+      -token             Input token for token introspect, refresh, revoke, or decode calls.
       -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter.
       -app_tid           Optional parameter for IAS multi-tenant applications.
       -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password

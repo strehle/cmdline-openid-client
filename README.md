@@ -47,7 +47,7 @@ Using Authorization code flow with a post-logout redirect URI, so the browser is
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -post_logout https://your-app.example.com/logged-out
 ```
 #### Decode a JWT
-Display both header and payload with colorized, formatted JSON (no server connection required)
+Display both header and payload with colorized, formatted JSON (no server connection required). Note: this only decodes the JWT — it does **not** verify the signature or validate any claims.
 ```text
 openid-client decode -token <your-jwt>
 ```
@@ -81,7 +81,7 @@ Command: (authorization_code is default)
        token-list         Perform /token/list Endpoint Call. Need token input parameter.
        revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
-       decode             Decode a JWT and display header and payload as formatted, colorized JSON. No server connection needed.
+       decode             Decode a JWT and display header and payload as formatted, colorized JSON. No server connection needed. Does not verify the signature or validate claims.
        version            Show version.
        help               Show this help for more details.
 

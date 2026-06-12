@@ -50,7 +50,7 @@ func main() {
 			"       token-list         Perform /token/list Endpoint Call. Need token input parameter.\n" +
 			"       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.\n" +
 			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
-			"       decode             Decode a JWT and display header and payload as formatted, colorized JSON.\n" +
+			"       decode             Decode a JWT and display header and payload as formatted, colorized JSON. Does not verify the signature or validate claims.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +

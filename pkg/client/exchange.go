@@ -322,8 +322,8 @@ func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, v
 
 func HandleDecodeJwt(token string, headerOnly bool, payloadOnly bool, raw bool) {
 	parts := strings.Split(token, ".")
-	if len(parts) < 2 {
-		log.Fatal("not a JWT: expected at least 2 dot-separated parts")
+	if len(parts) != 3 {
+		log.Fatalf("not a JWT: expected 3 dot-separated parts (header.payload.signature), got %d", len(parts))
 	}
 	header, err := decodeJwtPart(parts[0])
 	if err != nil {

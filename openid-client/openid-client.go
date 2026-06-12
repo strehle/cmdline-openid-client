@@ -196,6 +196,9 @@ func main() {
 			if *decodeRaw && !*decodeHeader && !*decodePayload {
 				log.Fatal("-raw requires -header or -payload")
 			}
+			if *decodeHeader && *decodePayload {
+				log.Fatal("-header and -payload are mutually exclusive")
+			}
 			client.HandleDecodeJwt(*tokenInput, *decodeHeader, *decodePayload, *decodeRaw)
 			return
 		}

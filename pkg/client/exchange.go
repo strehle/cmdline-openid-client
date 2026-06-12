@@ -349,7 +349,10 @@ func HandleDecodeJwt(token string, headerOnly bool, payloadOnly bool, raw bool) 
 
 func printJwt(v map[string]interface{}, raw bool) {
 	if raw {
-		data, _ := json.MarshalIndent(v, "", "    ")
+		data, err := json.MarshalIndent(v, "", "    ")
+		if err != nil {
+			log.Fatal(err)
+		}
 		fmt.Println(string(data))
 	} else {
 		printColorJSON(v)
@@ -386,18 +389,18 @@ const (
 )
 
 func printColorJSON(v map[string]interface{}) {
-	raw, _ := json.MarshalIndent(v, "", "    ")
+	raw, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(colorizeJSON(string(raw)))
 }
 
 // colorizeJSON applies jq-style ANSI coloring to indented JSON text.
 func colorizeJSON(src string) string {
 	var buf bytes.Buffer
-	decoder := json.NewDecoder(strings.NewReader(src))
-	decoder.UseNumber()
 
-	// We re-encode token by token to track context, but it's simpler to
-	// post-process the pre-indented string line by line.
+	// Post-process the pre-indented string line by line.
 	lines := strings.Split(src, "\n")
 	for _, line := range lines {
 		buf.WriteString(colorizeLine(line))

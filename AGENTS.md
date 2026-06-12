@@ -91,6 +91,24 @@ CLI flags map to RFC 8693 parameters as follows:
 - `-provider_name` → `resource=urn:sap:identity:application:provider:name:<name>`
 - SAP-specific types `saml2-session` / `saml2-header` use `urn:sap:identity:oauth:token-type:` prefix instead of IETF.
 
+### decode command
+Decodes a JWT locally (no network call) and pretty-prints header and payload.
+
+```bash
+openid-client decode -token <jwt>            # both header and payload, colorized
+openid-client decode -token <jwt> -header    # header only, colorized
+openid-client decode -token <jwt> -payload   # payload only, colorized
+openid-client decode -token <jwt> -header -raw   # header only, plain JSON (no colors/labels)
+openid-client decode -token <jwt> -payload -raw  # payload only, plain JSON (no colors/labels)
+```
+
+Flags specific to `decode`:
+- `-header` — show only the JWT header
+- `-payload` — show only the JWT payload
+- `-raw` — suppress colors and section labels; requires `-header` or `-payload`
+
+`decode` does not require `-issuer` or `-client_id` and exits before OIDC discovery. The implementation lives in `HandleDecodeJwt` in `pkg/client/exchange.go`, which also contains `decodeJwtPart` (base64url decode + JSON unmarshal), `printColorJSON` / `colorizeLine` / `colorizeValue` (jq-style ANSI coloring — no external dependencies), and `printJwt` (raw vs colored dispatch).
+
 ### SSO Token Flow (see `docs/sso_token.md`)
 Two-step IAS-specific flow:
 1. Obtain opaque SSO token via token-exchange with `-sso` flag (or explicit `-resource urn:sap:identity:sso`)

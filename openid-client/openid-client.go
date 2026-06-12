@@ -50,6 +50,7 @@ func main() {
 			"       token-list         Perform /token/list Endpoint Call. Need token input parameter.\n" +
 			"       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.\n" +
 			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
+			"       decode             Decode a JWT and display header and payload as formatted, colorized JSON.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -100,6 +101,9 @@ func main() {
 			"      -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
 			"      -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -tls_renegotiation TLS renegotiation mode. Possible values: never (0), once (1), freely (2). Default: once\n" +
+			"      -header            decode command: show only the JWT header.\n" +
+			"      -payload           decode command: show only the JWT payload.\n" +
+			"      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
 			"      -h                 Show this help for more details.")
 	}
@@ -152,6 +156,9 @@ func main() {
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
 	var exportParam = flag.String("export", "", "Return only a single token from token request: id_token, access_token or refresh_token.")
 	var tlsRenegotiation = flag.String("tls_renegotiation", "", "TLS renegotiation mode: never, once, freely. Default: once")
+	var decodeHeader = flag.Bool("header", false, "decode command: show only the JWT header")
+	var decodePayload = flag.Bool("payload", false, "decode command: show only the JWT payload")
+	var decodeRaw = flag.Bool("raw", false, "decode command: with -header or -payload, output plain JSON without colors or labels")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -175,12 +182,22 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
-	case "passcode", "introspect", "revoke", "userinfo", "token-list":
+	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode":
 		if *clientID == "" {
 			*clientID = os.Getenv("OPENID_ID")
 		}
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
+		}
+		if *command == "decode" {
+			if *tokenInput == "" {
+				log.Fatal("token parameter not set. Needed to pass it for decode")
+			}
+			if *decodeRaw && !*decodeHeader && !*decodePayload {
+				log.Fatal("-raw requires -header or -payload")
+			}
+			client.HandleDecodeJwt(*tokenInput, *decodeHeader, *decodePayload, *decodeRaw)
+			return
 		}
 	case "authorization_code":
 		*command = "" /* default command */

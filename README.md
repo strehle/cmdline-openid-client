@@ -46,6 +46,20 @@ Using Authorization code flow with a post-logout redirect URI, so the browser is
 ```text
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -post_logout https://your-app.example.com/logged-out
 ```
+#### Decode a JWT
+Display both header and payload with colorized, formatted JSON (no server connection required)
+```text
+openid-client decode -token <your-jwt>
+```
+Show only the payload, or only the header
+```text
+openid-client decode -token <your-jwt> -payload
+openid-client decode -token <your-jwt> -header
+```
+Output plain JSON suitable for piping (e.g. into `jq`)
+```text
+openid-client decode -token <your-jwt> -payload -raw | jq '.sub'
+```
 
 ### How to run in detail
 ```text
@@ -67,6 +81,7 @@ Command: (authorization_code is default)
        token-list         Perform /token/list Endpoint Call. Need token input parameter.
        revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
+       decode             Decode a JWT and display header and payload as formatted, colorized JSON. No server connection needed.
        version            Show version.
        help               Show this help for more details.
 
@@ -117,6 +132,9 @@ Flags:
       -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.
       -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -tls_renegotiation TLS renegotiation mode for the HTTP client. Possible values: never (0), once (1), freely (2). Default: once (RenegotiateOnceAsClient / 1).
+      -header            decode command: show only the JWT header.
+      -payload           decode command: show only the JWT payload.
+      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.
       -v                 Verbose. Show more details about calls.
       -h                 Show this help for more details.
 ```

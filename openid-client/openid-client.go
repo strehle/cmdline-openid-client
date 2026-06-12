@@ -191,7 +191,7 @@ func main() {
 		}
 		if *command == "decode" {
 			if *tokenInput == "" {
-				log.Fatal("token parameter not set. Needed to pass it for decode")
+				log.Fatal("missing required flag: -token <jwt>")
 			}
 			if *decodeRaw && !*decodeHeader && !*decodePayload {
 				log.Fatal("-raw requires -header or -payload")

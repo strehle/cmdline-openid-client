@@ -360,15 +360,7 @@ func printJwt(v map[string]interface{}, raw bool) {
 }
 
 func decodeJwtPart(part string) (map[string]interface{}, error) {
-	// JWT base64url encoding may omit padding
-	padded := part
-	switch len(padded) % 4 {
-	case 2:
-		padded += "=="
-	case 3:
-		padded += "="
-	}
-	data, err := base64.URLEncoding.DecodeString(padded)
+	data, err := base64.RawURLEncoding.DecodeString(part)
 	if err != nil {
 		return nil, err
 	}
@@ -430,8 +422,10 @@ func colorizeLine(line string) string {
 			return indent + coloredKey + ":" + coloredRest
 		}
 	}
-	// Standalone value (array element or bare value line)
-	return indent + colorizeValue(trimmed)
+	// Standalone value (array element or bare value line).
+	// colorizeValue prefixes a space (intended for after the ':' in key-value
+	// pairs), so strip it here to preserve the original indentation.
+	return indent + strings.TrimPrefix(colorizeValue(trimmed), " ")
 }
 
 // colorizeValue colors the value portion of a JSON line (may have trailing comma).

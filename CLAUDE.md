@@ -17,7 +17,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 
 - `pkg/client/` — all OAuth2/OIDC flow handlers
   - `client.go` — `authorization_code`, `refresh`, `client_credentials`, `password` flows; private_key_jwt helpers
-  - `exchange.go` — `token-exchange`, `jwt-bearer`, `saml-bearer`, `passcode`, `introspect`, `revoke`, `userinfo`, `token-list`; defines the `agent` HTTP user-agent constant used everywhere
+  - `exchange.go` — `token-exchange`, `jwt-bearer`, `saml-bearer`, `passcode`, `introspect`, `revoke`, `userinfo`, `token-list`; defines the `agent` HTTP user-agent variable used everywhere
   - `token.go` — shared `OpenIdToken` struct `{IdToken, AccessToken, RefreshToken}`
 - `pkg/cf/` — reads/writes `~/.cf/config.json` for CF UAA simulation (`-cf` flag)
 

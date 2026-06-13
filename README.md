@@ -46,6 +46,20 @@ Using Authorization code flow with a post-logout redirect URI, so the browser is
 ```text
 openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -post_logout https://your-app.example.com/logged-out
 ```
+#### Decode a signed JWT (JWS)
+Display both header and payload with colorized, formatted JSON (no server connection required). Supports signed JWTs (JWS compact serialization) only — encrypted JWTs (JWE) are not supported. Note: this only decodes the token — it does **not** verify the signature or validate any claims.
+```text
+openid-client decode -token <your-jwt>
+```
+Show only the payload, or only the header
+```text
+openid-client decode -token <your-jwt> -payload
+openid-client decode -token <your-jwt> -header
+```
+Output plain JSON suitable for piping (e.g. into `jq`)
+```text
+openid-client decode -token <your-jwt> -payload -raw | jq '.sub'
+```
 
 ### How to run in detail
 ```text
@@ -67,6 +81,7 @@ Command: (authorization_code is default)
        token-list         Perform /token/list Endpoint Call. Need token input parameter.
        revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
+       decode             Decode a signed JWT (JWS) and display header and payload as formatted, colorized JSON. No server connection needed. Does not verify the signature or validate claims.
        version            Show version.
        help               Show this help for more details.
 
@@ -93,7 +108,7 @@ Flags:
       -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
       -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.
       -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
-      -token             Input token for token introspect and token-exchange calls.
+      -token             Input token for token introspect, refresh, revoke, token-exchange, userinfo, token-list, or decode calls.
       -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter.
       -app_tid           Optional parameter for IAS multi-tenant applications.
       -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password
@@ -117,6 +132,9 @@ Flags:
       -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.
       -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.
       -tls_renegotiation TLS renegotiation mode for the HTTP client. Possible values: never (0), once (1), freely (2). Default: once (RenegotiateOnceAsClient / 1).
+      -header            decode command: show only the JWT header.
+      -payload           decode command: show only the JWT payload.
+      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.
       -v                 Verbose. Show more details about calls.
       -h                 Show this help for more details.
 ```

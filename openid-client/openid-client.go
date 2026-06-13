@@ -50,6 +50,7 @@ func main() {
 			"       token-list         Perform /token/list Endpoint Call. Need token input parameter.\n" +
 			"       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.\n" +
 			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
+			"       decode             Decode a signed JWT (JWS) and display header and payload as formatted, colorized JSON. Does not verify the signature or validate claims.\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -76,7 +77,7 @@ func main() {
 			"      -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
 			"      -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
-			"      -token             Input token for token introspect, refresh flow and token-exchange calls.\n" +
+			"      -token             Input token for token introspect, refresh, revoke, token-exchange, userinfo, token-list, or decode calls.\n" +
 			"      -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -app_tid           Optional parameter for IAS multi-tenant applications.\n" +
 			"      -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
@@ -100,6 +101,9 @@ func main() {
 			"      -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
 			"      -k                 Skip TLS server certificate verification and skip OIDC issuer check from well-known.\n" +
 			"      -tls_renegotiation TLS renegotiation mode. Possible values: never (0), once (1), freely (2). Default: once\n" +
+			"      -header            decode command: show only the JWT header.\n" +
+			"      -payload           decode command: show only the JWT payload.\n" +
+			"      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
 			"      -h                 Show this help for more details.")
 	}
@@ -138,7 +142,7 @@ func main() {
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
-	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh or revoke")
+	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh, revoke, token-exchange, userinfo, token-list, or decode")
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
@@ -152,6 +156,9 @@ func main() {
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
 	var exportParam = flag.String("export", "", "Return only a single token from token request: id_token, access_token or refresh_token.")
 	var tlsRenegotiation = flag.String("tls_renegotiation", "", "TLS renegotiation mode: never, once, freely. Default: once")
+	var decodeHeader = flag.Bool("header", false, "decode command: show only the JWT header")
+	var decodePayload = flag.Bool("payload", false, "decode command: show only the JWT payload")
+	var decodeRaw = flag.Bool("raw", false, "decode command: with -header or -payload, output plain JSON without colors or labels")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -175,12 +182,28 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
-	case "passcode", "introspect", "revoke", "userinfo", "token-list":
+	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode":
 		if *clientID == "" {
 			*clientID = os.Getenv("OPENID_ID")
 		}
 		if *clientID == "" {
 			*clientID = "T000000" /* default */
+		}
+		if *command == "decode" {
+			if *tokenInput == "" && *assertionToken == "" {
+				log.Fatal("missing required flag: -token <jwt>")
+			}
+			if *decodeRaw && !*decodeHeader && !*decodePayload {
+				log.Fatal("-raw requires -header or -payload")
+			}
+			if *decodeHeader && *decodePayload {
+				log.Fatal("-header and -payload are mutually exclusive")
+			}
+			if *tokenInput == "" {
+				*tokenInput = *assertionToken
+			}
+			client.HandleDecodeJwt(*tokenInput, *decodeHeader, *decodePayload, *decodeRaw)
+			return
 		}
 	case "authorization_code":
 		*command = "" /* default command */

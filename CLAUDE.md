@@ -30,7 +30,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 2. `-client_jwt` P12 + `-pin` → `CreatePrivateKeyJwt` (x5t thumbprint as kid)
 3. `-client_tls` P12 + `-pin` → mutual TLS `http.Client`
 4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid`
-5. `-client_secret` → plain secret in form body
+5. `-client_secret` → plain secret in form body (exception: `HandleCorpIdpExchangeFlow` uses HTTP Basic Auth instead)
 
 **OIDC discovery:** `oidc.NewProvider` fetches `.well-known/openid-configuration`. If discovery fails and `-url` is set with a non-empty command, endpoints fall back to the `-url` value directly (does not apply to the default `authorization_code` flow).
 

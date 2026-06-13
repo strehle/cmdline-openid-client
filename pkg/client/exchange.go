@@ -1,6 +1,8 @@
 package client
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -316,6 +318,163 @@ func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, v
 		}
 	}
 	return resultString
+}
+
+func HandleDecodeJwt(token string, headerOnly bool, payloadOnly bool, raw bool) {
+	parts := strings.Split(strings.TrimSpace(token), ".")
+	if len(parts) != 3 {
+		log.Fatalf("unsupported token format: decode only supports signed JWTs (JWS compact serialization, 3 parts); got %d parts", len(parts))
+	}
+	header, err := decodeJwtPart(parts[0])
+	if err != nil {
+		log.Fatalf("failed to decode JWT header: %v", err)
+	}
+	payload, err := decodeJwtPart(parts[1])
+	if err != nil {
+		log.Fatalf("failed to decode JWT payload: %v", err)
+	}
+
+	switch {
+	case headerOnly:
+		printJwt(header, raw)
+	case payloadOnly:
+		printJwt(payload, raw)
+	default:
+		fmt.Println("Header:")
+		printColorJSON(header)
+		fmt.Println("\nPayload:")
+		printColorJSON(payload)
+	}
+}
+
+func printJwt(v map[string]interface{}, raw bool) {
+	if raw {
+		data, err := json.MarshalIndent(v, "", "    ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(data))
+	} else {
+		printColorJSON(v)
+	}
+}
+
+func decodeJwtPart(part string) (map[string]interface{}, error) {
+	data, err := base64.RawURLEncoding.DecodeString(part)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// ANSI color codes matching jq's default palette
+const (
+	colorReset  = "\033[0m"
+	colorKey    = "\033[34;1m" // bold blue  — object keys
+	colorString = "\033[0;32m" // green       — string values
+	colorNumber = "\033[0;39m" // default fg  — numbers (jq uses no color)
+	colorBool   = "\033[0;39m" // default fg  — true/false/null
+)
+
+func printColorJSON(v map[string]interface{}) {
+	raw, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(colorizeJSON(string(raw)))
+}
+
+// colorizeJSON applies jq-style ANSI coloring to indented JSON text.
+func colorizeJSON(src string) string {
+	var buf bytes.Buffer
+
+	// Post-process the pre-indented string line by line.
+	lines := strings.Split(src, "\n")
+	for _, line := range lines {
+		buf.WriteString(colorizeLine(line))
+		buf.WriteByte('\n')
+	}
+	// trim trailing newline added above to match the original
+	result := buf.String()
+	if len(result) > 0 && result[len(result)-1] == '\n' {
+		result = result[:len(result)-1]
+	}
+	return result
+}
+
+// colorizeLine colorizes a single line of indented JSON.
+func colorizeLine(line string) string {
+	trimmed := strings.TrimLeft(line, " \t")
+	indent := line[:len(line)-len(trimmed)]
+
+	// Object key: starts with a quoted string followed by a colon
+	if strings.HasPrefix(trimmed, `"`) {
+		colonIdx := indexAfterString(trimmed)
+		if colonIdx >= 0 && colonIdx < len(trimmed) && trimmed[colonIdx] == ':' {
+			key := trimmed[:colonIdx]
+			rest := trimmed[colonIdx:] // ": <value>"
+			coloredKey := colorKey + key + colorReset
+			coloredRest := colorizeValue(rest[1:]) // strip leading ':'
+			return indent + coloredKey + ":" + coloredRest
+		}
+	}
+	// Standalone value (array element or bare value line).
+	// colorizeValue prefixes a space (intended for after the ':' in key-value
+	// pairs), so strip it here to preserve the original indentation.
+	return indent + strings.TrimPrefix(colorizeValue(trimmed), " ")
+}
+
+// colorizeValue colors the value portion of a JSON line (may have trailing comma).
+func colorizeValue(s string) string {
+	s = strings.TrimLeft(s, " ")
+	if len(s) == 0 {
+		return s
+	}
+
+	// Detect trailing comma
+	trail := ""
+	core := s
+	if strings.HasSuffix(s, ",") {
+		trail = ","
+		core = s[:len(s)-1]
+	}
+	core = strings.TrimRight(core, " ")
+
+	switch {
+	case core == "{" || core == "}" || core == "[" || core == "]" ||
+		core == "{}" || core == "[]":
+		return " " + core + trail
+	case strings.HasPrefix(core, `"`):
+		return " " + colorString + core + colorReset + trail
+	case core == "true" || core == "false" || core == "null":
+		return " " + colorBool + core + colorReset + trail
+	default:
+		// number or unrecognized
+		return " " + colorNumber + core + colorReset + trail
+	}
+}
+
+// indexAfterString returns the index of the character immediately after the
+// closing quote of the first JSON string in s, or -1 if s doesn't start with
+// a valid quoted string.
+func indexAfterString(s string) int {
+	if len(s) == 0 || s[0] != '"' {
+		return -1
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] == '\\' {
+			i++ // skip escaped character
+			continue
+		}
+		if s[i] == '"' {
+			return i + 1
+		}
+	}
+	return -1
 }
 
 func HandleTokenList(request url.Values, token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {

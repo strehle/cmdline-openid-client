@@ -108,7 +108,7 @@ Flags:
       -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
       -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.
       -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.
-      -token             Input token for token introspect, refresh, revoke, or decode calls.
+      -token             Input token for token introspect, refresh, revoke, token-exchange, or decode calls.
       -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter.
       -app_tid           Optional parameter for IAS multi-tenant applications.
       -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password

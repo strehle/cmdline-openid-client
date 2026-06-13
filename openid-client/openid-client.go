@@ -642,6 +642,9 @@ func main() {
 			var passcode = client.HandlePasscode(*issEndPoint, *tlsClient, verbose)
 			fmt.Println(passcode)
 		} else if *command == "idp_token" {
+			if *assertionToken == "" && *tokenInput != "" {
+				*assertionToken = *tokenInput
+			}
 			if *assertionToken == "" {
 				log.Println("No id_token token received.")
 				return

@@ -77,7 +77,7 @@ func main() {
 			"      -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
 			"      -refresh_expiry    Value in seconds. Optional parameter to reduce Refresh Token Lifetime.\n" +
-			"      -token             Input token for token introspect, refresh, revoke, token-exchange, or decode calls.\n" +
+			"      -token             Input token for token introspect, refresh, revoke, token-exchange, userinfo, token-list, or decode calls.\n" +
 			"      -token_format      Format for access_token. Possible values are opaque and jwt. Optional parameter, default: opaque\n" +
 			"      -app_tid           Optional parameter for IAS multi-tenant applications.\n" +
 			"      -cmd               Single command to be executed. Supported commands currently: jwks, client_credentials, password\n" +
@@ -142,7 +142,7 @@ func main() {
 	var appTid = flag.String("app_tid", "", "Application tenant ID")
 	var command = flag.String("cmd", "", "Single command to be executed")
 	var assertionToken = flag.String("assertion", "", "Input token for token exchanges")
-	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh, revoke, token-exchange, or decode")
+	var tokenInput = flag.String("token", "", "Input token for token introspect, refresh, revoke, token-exchange, userinfo, token-list, or decode")
 	var subjectType = flag.String("subject_type", "", "Token input type")
 	var requestedType = flag.String("requested_type", "", "Token-Exchange requested type")
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
@@ -190,7 +190,7 @@ func main() {
 			*clientID = "T000000" /* default */
 		}
 		if *command == "decode" {
-			if *tokenInput == "" {
+			if *tokenInput == "" && *assertionToken == "" {
 				log.Fatal("missing required flag: -token <jwt>")
 			}
 			if *decodeRaw && !*decodeHeader && !*decodePayload {
@@ -198,6 +198,9 @@ func main() {
 			}
 			if *decodeHeader && *decodePayload {
 				log.Fatal("-header and -payload are mutually exclusive")
+			}
+			if *tokenInput == "" {
+				*tokenInput = *assertionToken
 			}
 			client.HandleDecodeJwt(*tokenInput, *decodeHeader, *decodePayload, *decodeRaw)
 			return

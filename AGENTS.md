@@ -92,7 +92,7 @@ CLI flags map to RFC 8693 parameters as follows:
 - SAP-specific types `saml2-session` / `saml2-header` use `urn:sap:identity:oauth:token-type:` prefix instead of IETF.
 
 ### decode command
-Decodes a JWT locally (no network call) and pretty-prints header and payload.
+Decodes a signed JWT (JWS compact serialization) locally (no network call) and pretty-prints header and payload. It does not verify the signature or validate claims.
 
 ```bash
 openid-client decode -token <jwt>            # both header and payload, colorized

@@ -23,7 +23,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 
 **Command dispatch:** `main()` checks if `os.Args[1]` starts with `-`; if not, it's treated as a command name and remaining args are parsed by `flag`. Empty command defaults to `authorization_code`.
 
-**Request building:** `main()` builds a shared `url.Values` (`requestMap`) with `client_id`, `client_secret`, `client_assertion`, and `token_format`, then passes it to the relevant handler. Exception: `authorization_code` and `refresh` flows build their own `url.Values` inside their handlers.
+**Request building:** `main()` builds a shared `url.Values` (`requestMap`) with `client_id`, `client_secret`, `client_assertion`, and `token_format`, then passes it to most handlers. The `authorization_code` handler uses `requestMap` only as a source of optional params, and builds its own POST body `url.Values`; the `refresh` handler builds its own `url.Values` inside `HandleRefreshFlow`.
 
 **Client auth precedence** (resolved in `main` before any handler is called):
 1. `-client_assertion` → external JWT (`privateKeyJwt`)
@@ -34,7 +34,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 
 **OIDC discovery:** `oidc.NewProvider` fetches `.well-known/openid-configuration`. If discovery fails and `-url` is set with a non-empty command, endpoints fall back to the `-url` value directly (does not apply to the default `authorization_code` flow).
 
-**The `decode` command** is local-only (no network, no `-issuer`/`-client_id` needed). It splits the JWT on `.`, base64url-decodes header and payload, and pretty-prints them with jq-style ANSI colors (implemented in `pkg/client/exchange.go` with no external deps). Flags: `-header` (header only), `-payload` (payload only), `-raw` (plain JSON without colors or labels — requires `-header` or `-payload`). The command exits before OIDC discovery.
+**The `decode` command** is local-only (no network, no `-issuer`/`-client_id` needed). It supports signed JWTs only (JWS compact serialization, 3 parts), base64url-decodes header and payload, and pretty-prints them with jq-style ANSI colors (implemented in `pkg/client/exchange.go` with no external deps). It does **not** verify the signature or validate any claims. Flags: `-header` (header only), `-payload` (payload only), `-raw` (plain JSON without colors or labels — requires `-header` or `-payload`). The command exits before OIDC discovery.
 
 **IAS-specific URL rewrites** (done inside handlers):
 - `HandleCorpIdpExchangeFlow`: `/oauth2/token` → `/oauth2/exchange/corporateidp`

@@ -477,6 +477,50 @@ func indexAfterString(s string) int {
 	return -1
 }
 
+// HandleClientRegistration performs RFC 7591 Dynamic Client Registration.
+// registrationEndpoint is the server's registration endpoint.
+// metadata is a map of client metadata fields (redirect_uris, grant_types, etc.).
+// bearerToken is the optional initial access token for protected endpoints.
+func HandleClientRegistration(metadata map[string]interface{}, bearerToken string, clientID string, clientSecret string, registrationEndpoint string, tlsClient http.Client, verbose bool) map[string]interface{} {
+	body, err := json.Marshal(metadata)
+	if err != nil {
+		log.Fatal("Error marshaling registration request: " + err.Error())
+	}
+	req, requestError := http.NewRequest("POST", registrationEndpoint, bytes.NewReader(body))
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", agent)
+	if bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
+	} else if clientID != "" && clientSecret != "" {
+		req.SetBasicAuth(url.QueryEscape(clientID), url.QueryEscape(clientSecret))
+	}
+	if verbose {
+		fmt.Println("POST " + registrationEndpoint)
+		fmt.Println(string(body))
+	}
+	resp, clientError := tlsClient.Do(req)
+	if clientError != nil {
+		log.Fatal(clientError)
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var result map[string]interface{}
+	json.Unmarshal(bodyBytes, &result)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		log.Fatal("Registration failed (" + resp.Status + "): " + string(bodyBytes))
+	}
+	data, _ := json.MarshalIndent(result, "", "    ")
+	fmt.Println(string(data))
+	return result
+}
+
 func HandleTokenList(request url.Values, token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
 	request.Set("token", token)
 	req, requestError := http.NewRequest("POST", tokenEndpoint+"/list", strings.NewReader(request.Encode()))

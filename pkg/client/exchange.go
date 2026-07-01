@@ -511,12 +511,12 @@ func HandleClientRegistration(metadata map[string]interface{}, bearerToken strin
 	if err != nil {
 		log.Fatal(err)
 	}
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		log.Fatal("Registration failed (" + resp.Status + "): " + string(bodyBytes))
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		log.Fatal("Error parsing registration response: " + err.Error() + ": " + string(bodyBytes))
-	}
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		log.Fatal("Registration failed (" + resp.Status + "): " + string(bodyBytes))
 	}
 	data, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {

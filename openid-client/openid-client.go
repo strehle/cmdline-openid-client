@@ -708,7 +708,7 @@ func main() {
 			registrationEndpoint := claims.RegistrationEndpoint
 			if *urlEndPoint != "" {
 				registrationEndpoint = *urlEndPoint
-			} else if registrationEndpoint == "" {
+			} else if registrationEndpoint == "" && strings.Contains(claims.TokenEndPoint, "/oauth2/token") {
 				registrationEndpoint = strings.Replace(claims.TokenEndPoint, "/oauth2/token", "/oauth2/register", 1)
 			}
 			if registrationEndpoint == "" {

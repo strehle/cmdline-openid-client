@@ -110,7 +110,7 @@ func main() {
 			"      -grant_types       register command: space-separated grant types (RFC 7591).\n" +
 			"      -response_types    register command: space-separated response types (RFC 7591).\n" +
 			"      -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).\n" +
-			"      -reg_scope         register command: space-separated requested scope (RFC 7591).\n" +
+			"      -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
 			"      -h                 Show this help for more details.")
 	}
@@ -171,7 +171,7 @@ func main() {
 	var regGrantTypes = flag.String("grant_types", "", "register command: space-separated grant types (RFC 7591)")
 	var regResponseTypes = flag.String("response_types", "", "register command: space-separated response types (RFC 7591)")
 	var regTokenEndpointAuthMethod = flag.String("token_endpoint_auth_method", "", "register command: token endpoint auth method (RFC 7591)")
-	var regScope = flag.String("reg_scope", "", "register command: space-separated requested scope (RFC 7591)")
+	var regJwksUri = flag.String("jwks_uri", "", "register command: URL of the client's JSON Web Key Set (RFC 7591)")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -735,11 +735,14 @@ func main() {
 			}
 			authMethod := *regTokenEndpointAuthMethod
 			if authMethod == "" {
-				authMethod = "client_secret_basic client_secret_post tls_client_auth private_key_jwt"
+				authMethod = "client_secret_basic"
 			}
 			metadata["token_endpoint_auth_method"] = authMethod
-			if *regScope != "" {
-				metadata["scope"] = *regScope
+			if *regJwksUri != "" {
+				metadata["jwks_uri"] = *regJwksUri
+				metadata["token_endpoint_auth_method"] = "private_key_jwt"
+			} else {
+				metadata["token_endpoint_auth_method"] = authMethod
 			}
 			client.HandleClientRegistration(metadata, *bearerToken, *clientID, *clientSecret, registrationEndpoint, *tlsClient, verbose)
 		} else if *command == "sso" {

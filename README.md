@@ -60,6 +60,11 @@ Output plain JSON suitable for piping (e.g. into `jq`)
 ```text
 openid-client decode -token <your-jwt> -payload -raw | jq '.sub'
 ```
+#### Dynamic Client Registration (RFC 7591)
+Register a new OAuth 2.0 client at the provider's registration endpoint. See [Dynamic Client Registration](docs/register.md) for details.
+```text
+openid-client register -issuer https://<tenant>.accounts.ondemand.com -bearer <initial-access-token> -client_name my-app -redirect_uris "https://my-app.example.com/callback"
+```
 
 ### How to run in detail
 ```text
@@ -82,6 +87,7 @@ Command: (authorization_code is default)
        revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.
        sso                Perform sso token flow to create a new web session in IAS.
        decode             Decode a signed JWT (JWS) and display header and payload as formatted, colorized JSON. No server connection needed. Does not verify the signature or validate claims.
+       register           Perform OAuth 2.0 Dynamic Client Registration (RFC 7591).
        version            Show version.
        help               Show this help for more details.
 
@@ -135,6 +141,12 @@ Flags:
       -header            decode command: show only the JWT header.
       -payload           decode command: show only the JWT payload.
       -raw               decode command: with -header or -payload, output plain JSON without colors or labels.
+      -redirect_uris     register command: space-separated redirect URIs (RFC 7591).
+      -client_name       register command: human-readable client name (RFC 7591).
+      -grant_types       register command: space-separated grant types (RFC 7591).
+      -response_types    register command: space-separated response types (RFC 7591).
+      -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).
+      -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).
       -v                 Verbose. Show more details about calls.
       -h                 Show this help for more details.
 ```

@@ -512,11 +512,16 @@ func HandleClientRegistration(metadata map[string]interface{}, bearerToken strin
 		log.Fatal(err)
 	}
 	var result map[string]interface{}
-	json.Unmarshal(bodyBytes, &result)
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		log.Fatal("Error parsing registration response: " + err.Error() + ": " + string(bodyBytes))
+	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		log.Fatal("Registration failed (" + resp.Status + "): " + string(bodyBytes))
 	}
-	data, _ := json.MarshalIndent(result, "", "    ")
+	data, err := json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		log.Fatal("Error formatting registration response: " + err.Error())
+	}
 	fmt.Println(string(data))
 	return result
 }

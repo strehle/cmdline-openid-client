@@ -734,16 +734,16 @@ func main() {
 				metadata["response_types"] = strings.Fields(*regResponseTypes)
 			}
 			authMethod := *regTokenEndpointAuthMethod
+			if *regJwksUri != "" {
+				metadata["jwks_uri"] = *regJwksUri
+				if authMethod == "" {
+					authMethod = "private_key_jwt"
+				}
+			}
 			if authMethod == "" {
 				authMethod = "client_secret_basic"
 			}
 			metadata["token_endpoint_auth_method"] = authMethod
-			if *regJwksUri != "" {
-				metadata["jwks_uri"] = *regJwksUri
-				metadata["token_endpoint_auth_method"] = "private_key_jwt"
-			} else {
-				metadata["token_endpoint_auth_method"] = authMethod
-			}
 			client.HandleClientRegistration(metadata, *bearerToken, *clientID, *clientSecret, registrationEndpoint, *tlsClient, verbose)
 		} else if *command == "sso" {
 			client.HandleSsoFlow(*ssoTokenValue, *redirectUri, *spName, *provider)

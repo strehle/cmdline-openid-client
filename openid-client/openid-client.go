@@ -30,6 +30,19 @@ var (
 	date    = "unknown"
 )
 
+// stringSliceFlag allows a flag to be specified multiple times on the command
+// line, collecting every occurrence into a slice (e.g. -resource a -resource b).
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringSliceFlag) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Println("Usage: openid-client <command> <flags>\n" +
@@ -90,7 +103,7 @@ func main() {
 			"      -username          User name for command password grant required, else optional.\n" +
 			"      -password          User password for command password grant required, else optional.\n" +
 			"      -subject_type      Token-Exchange subject type. Type of input assertion.\n" +
-			"      -resource          Token-Exchange custom resource parameter.\n" +
+			"      -resource          Token-Exchange custom resource parameter. May be specified multiple times to send multiple resource parameters (e.g. for client_credentials).\n" +
 			"      -requested_type    Token-Exchange requested type.\n" +
 			"      -redirect_uri      Redirect URL for the sso command only.\n" +
 			"      -sp                Service provider name parameter for sso command only.\n" +
@@ -155,7 +168,8 @@ func main() {
 	var providerName = flag.String("provider_name", "", "Provider name for token-exchange")
 	var redirectUri = flag.String("redirect_uri", "", "Redirect URL for sso")
 	var resourceSso = flag.Bool("sso", false, "Adds static parameter resource=urn:sap:identity:sso to token-exchange.")
-	var resourceParam = flag.String("resource", "", "Additional resource")
+	var resourceParams stringSliceFlag
+	flag.Var(&resourceParams, "resource", "Additional resource. May be specified multiple times to send multiple resource parameters.")
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
 	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
 	var postLogoutRedirectUri = flag.String("post_logout", "", "Post logout redirect URI for authorization_code flow.")
@@ -194,8 +208,8 @@ func main() {
 	case "version":
 		showVersion()
 		return
-	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
-	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode", "register":
+	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "":
+	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode", "sso", "register":
 		if *clientID == "" {
 			*clientID = os.Getenv("OPENID_ID")
 		}
@@ -463,8 +477,8 @@ func main() {
 	if *providerName != "" {
 		requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 	}
-	if *resourceParam != "" {
-		requestMap.Add("resource", *resourceParam)
+	for _, r := range resourceParams {
+		requestMap.Add("resource", r)
 	}
 	if *requestQuery != "" {
 		requestQueryParams := strings.Split(*requestQuery, "&")
@@ -766,8 +780,11 @@ func main() {
 		if *postLogoutRedirectUri != "" {
 			requestMap.Set("post_logout_redirect_uri", *postLogoutRedirectUri)
 		}
-		if *resourceParam != "" {
-			requestMap.Set("resource", *resourceParam)
+		if len(resourceParams) > 0 {
+			requestMap.Del("resource")
+			for _, r := range resourceParams {
+				requestMap.Add("resource", r)
+			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
 		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
@@ -820,7 +837,7 @@ func main() {
 		if *resourceSso {
 			// Set the requestedType to "access_token" so the caller knows which token type was requested.
 			*requestedType = "access_token"
-			*resourceParam = ""
+			resourceParams = nil
 			requestMap.Set("resource", "urn:sap:identity:sso")
 			requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 		}
@@ -836,8 +853,8 @@ func main() {
 			if *providerName != "" {
 				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
 			}
-			if *resourceParam != "" {
-				requestMap.Add("resource", *resourceParam)
+			for _, r := range resourceParams {
+				requestMap.Add("resource", r)
 			}
 
 			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)

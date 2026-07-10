@@ -51,6 +51,7 @@ func main() {
 			"       revoke             Perform OAuth 2.0 Token Revocation Endpoint Call. Need token input parameter.\n" +
 			"       sso                Perform sso token flow to create a new web session in IAS.\n" +
 			"       decode             Decode a signed JWT (JWS) and display header and payload as formatted, colorized JSON. Does not verify the signature or validate claims.\n" +
+			"       register           Perform OAuth 2.0 Dynamic Client Registration (RFC 7591).\n" +
 			"       version            Show version.\n" +
 			"       help               Show this help for more details.\n" +
 			"\n" +
@@ -104,6 +105,12 @@ func main() {
 			"      -header            decode command: show only the JWT header.\n" +
 			"      -payload           decode command: show only the JWT payload.\n" +
 			"      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.\n" +
+			"      -redirect_uris     register command: space-separated redirect URIs (RFC 7591).\n" +
+			"      -client_name       register command: human-readable client name (RFC 7591).\n" +
+			"      -grant_types       register command: space-separated grant types (RFC 7591).\n" +
+			"      -response_types    register command: space-separated response types (RFC 7591).\n" +
+			"      -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).\n" +
+			"      -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
 			"      -h                 Show this help for more details.")
 	}
@@ -159,6 +166,12 @@ func main() {
 	var decodeHeader = flag.Bool("header", false, "decode command: show only the JWT header")
 	var decodePayload = flag.Bool("payload", false, "decode command: show only the JWT payload")
 	var decodeRaw = flag.Bool("raw", false, "decode command: with -header or -payload, output plain JSON without colors or labels")
+	var regRedirectURIs = flag.String("redirect_uris", "", "register command: space-separated list of redirect URIs (RFC 7591)")
+	var regClientName = flag.String("client_name", "", "register command: human-readable client name (RFC 7591)")
+	var regGrantTypes = flag.String("grant_types", "", "register command: space-separated grant types (RFC 7591)")
+	var regResponseTypes = flag.String("response_types", "", "register command: space-separated response types (RFC 7591)")
+	var regTokenEndpointAuthMethod = flag.String("token_endpoint_auth_method", "", "register command: token endpoint auth method (RFC 7591)")
+	var regJwksUri = flag.String("jwks_uri", "", "register command: URL of the client's JSON Web Key Set (RFC 7591)")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
@@ -182,7 +195,7 @@ func main() {
 		showVersion()
 		return
 	case "client_credentials", "refresh", "password", "token-exchange", "jwt-bearer", "saml-bearer", "idp_token", "sso", "":
-	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode":
+	case "passcode", "introspect", "revoke", "userinfo", "token-list", "decode", "register":
 		if *clientID == "" {
 			*clientID = os.Getenv("OPENID_ID")
 		}
@@ -250,11 +263,12 @@ func main() {
 	var callbackURL = "http://localhost:" + *portParameter + "/callback"
 	ctx := context.Background()
 	var claims struct {
-		AuthorizeEndpoint  string `json:"authorization_endpoint"`
-		EndSessionEndpoint string `json:"end_session_endpoint"`
-		TokenEndPoint      string `json:"token_endpoint"`
-		IntroSpectEndpoint string `json:"introspection_endpoint,omitempty"`
-		UserInfoEndpoint   string `json:"userinfo_endpoint,omitempty"`
+		AuthorizeEndpoint    string `json:"authorization_endpoint"`
+		EndSessionEndpoint   string `json:"end_session_endpoint"`
+		TokenEndPoint        string `json:"token_endpoint"`
+		IntroSpectEndpoint   string `json:"introspection_endpoint,omitempty"`
+		UserInfoEndpoint     string `json:"userinfo_endpoint,omitempty"`
+		RegistrationEndpoint string `json:"registration_endpoint,omitempty"`
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
@@ -275,6 +289,7 @@ func main() {
 			claims.AuthorizeEndpoint = *urlEndPoint
 			claims.IntroSpectEndpoint = *urlEndPoint
 			claims.UserInfoEndpoint = *urlEndPoint
+			claims.RegistrationEndpoint = *urlEndPoint
 			claims.EndSessionEndpoint = ""
 		} else {
 			log.Fatal(oidcError)
@@ -689,6 +704,47 @@ func main() {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
 			}
 			client.HandleTokenList(requestMap, *tokenInput, claims.TokenEndPoint, *tlsClient, verbose)
+		} else if *command == "register" {
+			registrationEndpoint := claims.RegistrationEndpoint
+			if *urlEndPoint != "" {
+				registrationEndpoint = *urlEndPoint
+			} else if registrationEndpoint == "" && strings.Contains(claims.TokenEndPoint, "/oauth2/token") {
+				registrationEndpoint = strings.Replace(claims.TokenEndPoint, "/oauth2/token", "/oauth2/register", 1)
+			}
+			if registrationEndpoint == "" {
+				log.Fatal("No registration_endpoint found in OIDC discovery. Use -url to specify it directly.")
+			}
+			metadata := map[string]interface{}{}
+			redirectURIs := *regRedirectURIs
+			if redirectURIs == "" {
+				redirectURIs = callbackURL
+			}
+			metadata["redirect_uris"] = strings.Fields(redirectURIs)
+			clientName := *regClientName
+			if clientName == "" {
+				clientName = "openid-client"
+			}
+			metadata["client_name"] = clientName
+			grantTypes := *regGrantTypes
+			if grantTypes == "" {
+				grantTypes = "authorization_code client_credentials refresh_token password urn:ietf:params:oauth:grant-type:jwt-bearer"
+			}
+			metadata["grant_types"] = strings.Fields(grantTypes)
+			if *regResponseTypes != "" {
+				metadata["response_types"] = strings.Fields(*regResponseTypes)
+			}
+			authMethod := *regTokenEndpointAuthMethod
+			if *regJwksUri != "" {
+				metadata["jwks_uri"] = *regJwksUri
+				if authMethod == "" {
+					authMethod = "private_key_jwt"
+				}
+			}
+			if authMethod == "" {
+				authMethod = "client_secret_basic"
+			}
+			metadata["token_endpoint_auth_method"] = authMethod
+			client.HandleClientRegistration(metadata, *bearerToken, *clientID, *clientSecret, registrationEndpoint, *tlsClient, verbose)
 		} else if *command == "sso" {
 			client.HandleSsoFlow(*ssoTokenValue, *redirectUri, *spName, *provider)
 		} else if *command == "jwks" {

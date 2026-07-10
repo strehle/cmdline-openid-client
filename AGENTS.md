@@ -9,7 +9,7 @@ A Go CLI tool that performs OAuth2/OIDC flows (authorization code, client creden
 openid-client/openid-client.go   # main package — CLI entry point, flag parsing, flow dispatch
 pkg/client/
   client.go    # authorization_code, refresh, client_credentials, password flows + private_key_jwt helpers
-  exchange.go  # token-exchange, jwt-bearer, saml-bearer, passcode, introspect, revoke, userinfo, token-list
+  exchange.go  # token-exchange, jwt-bearer, saml-bearer, passcode, introspect, revoke, userinfo, token-list, register (dynamic client registration)
   token.go     # shared OpenIdToken struct {IdToken, AccessToken, RefreshToken}
 pkg/cf/
   config.go            # read/write CF ~/.cf/config.json for UAA simulation (-cf flag)
@@ -20,6 +20,7 @@ docs/
   token-exchange-doc.md # RFC7523 jwt-bearer, RFC8693 token-exchange params mapping
   passcode.md          # IAS-specific passcode service, dual-cert scripts
   sso_token.md         # SSO token flow, -sso flag, saml2/idp/sso endpoint
+  register.md          # RFC7591 dynamic client registration, endpoint resolution, auth, flags
 ```
 
 ## Build & Run
@@ -108,6 +109,21 @@ Flags specific to `decode`:
 - `-raw` — suppress colors and section labels; requires `-header` or `-payload`
 
 `decode` does not require `-issuer` or `-client_id` and exits before OIDC discovery. The implementation lives in `HandleDecodeJwt` in `pkg/client/exchange.go`, which also contains `decodeJwtPart` (base64url decode + JSON unmarshal), `printColorJSON` / `colorizeLine` / `colorizeValue` (jq-style ANSI coloring — no external dependencies), and `printJwt` (raw vs colored dispatch).
+
+### register command (see `docs/register.md`)
+Performs OAuth 2.0 Dynamic Client Registration (RFC 7591). Builds a JSON client-metadata map in `main`, POSTs it to the registration endpoint, and prints the response via `HandleClientRegistration` in `pkg/client/exchange.go`.
+
+- Endpoint resolution order: `-url` (used directly) → discovery `registration_endpoint` → fallback rewrite of `token_endpoint` `/oauth2/token` → `/oauth2/register` (IAS convention). Fails if none resolves.
+- Auth: `-bearer` (initial access token → `Authorization: Bearer`) takes precedence; otherwise `-client_id` + `-client_secret` → HTTP Basic. Unauthenticated request if neither is set.
+- `register` shares the `passcode`/`introspect`/`revoke`/`userinfo`/`token-list` group where `-client_id` defaults to `T000000` when omitted.
+- Flag → metadata mapping (defaults applied in `main`):
+  - `-redirect_uris` → `redirect_uris` (space-separated; default `http://localhost:<port>/callback`)
+  - `-client_name` → `client_name` (default `openid-client`)
+  - `-grant_types` → `grant_types` (space-separated; default `authorization_code client_credentials refresh_token password urn:ietf:params:oauth:grant-type:jwt-bearer`)
+  - `-response_types` → `response_types` (space-separated; omitted if empty)
+  - `-token_endpoint_auth_method` → `token_endpoint_auth_method` (default `client_secret_basic`)
+  - `-jwks_uri` → `jwks_uri`; when set, forces `token_endpoint_auth_method=private_key_jwt`
+- Non-201/200 responses cause `log.Fatal`.
 
 ### SSO Token Flow (see `docs/sso_token.md`)
 Two-step IAS-specific flow:

@@ -853,7 +853,7 @@ func main() {
 			}
 			if *providerName != "" {
 				requestMap.Set("resource", "urn:sap:identity:application:provider:name:"+*providerName)
-			} else {
+			} else if len(resourceParams) > 0 {
 				requestMap.Del("resource")
 				for _, r := range resourceParams {
 					requestMap.Add("resource", r)

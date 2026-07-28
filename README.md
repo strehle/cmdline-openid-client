@@ -110,6 +110,7 @@ Flags:
       -prompt            OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.
       -max_age           OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request.
       -refresh           Bool flag. Default false. If true, call refresh flow for the received id_token.
+      -idp               Identity provider ID to hint which IdP should be used in the authorization_code flow. Optional parameter passed as idp query parameter to the authorization endpoint.
       -idp_token         Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.
       -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).
       -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.

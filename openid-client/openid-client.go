@@ -87,6 +87,7 @@ func main() {
 			"      -prompt            OIDC prompt parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. Value can be none or login.\n" +
 			"      -max_age           OIDC max_age parameter. This is an optional parameter. If you do not set it, the parameter will be omitted in request. \n" +
 			"      -refresh           Bool flag. Default false. If true, call refresh flow for the received id_token.\n" +
+			"      -idp               Identity provider parameter passed to the authorization_code flow.\n" +
 			"      -idp_token         Bool flag. Default false. If true, call the OIDC IdP token exchange endpoint (IAS specific only) and return the response.\n" +
 			"      -idp_scope         OIDC scope parameter. Default no scope is set. If you set the parameter idp_scope, it is set in IdP token exchange endpoint (IAS specific only).\n" +
 			"      -introspect        Bool flag. Default false. If true, call the OIDC token introspect endpoint (if provided in well-known) and return the response.\n" +
@@ -139,6 +140,7 @@ func main() {
 	var nonceParameter = flag.String("nonce", "", "OIDC nonce parameter")
 	var promptParameter = flag.String("prompt", "", "OIDC nonce parameter")
 	var maxAgeParameter = flag.String("max_age", "", "OIDC nonce parameter")
+	var idpParameter = flag.String("idp", "", "Identity provider parameter for authorization_code flow.")
 	var doCorpIdpTokenExchange = flag.Bool("idp_token", false, "Return OIDC IdP token response")
 	var doIntrospect = flag.Bool("introspect", false, "Call introspect with received id_token")
 	var refreshExpiry = flag.String("refresh_expiry", "", "Value in seconds to reduce Refresh Token Lifetime")
@@ -779,6 +781,9 @@ func main() {
 		}
 		if *postLogoutRedirectUri != "" {
 			requestMap.Set("post_logout_redirect_uri", *postLogoutRedirectUri)
+		}
+		if *idpParameter != "" {
+			requestMap.Set("idp", *idpParameter)
 		}
 		if len(resourceParams) > 0 {
 			requestMap.Del("resource")

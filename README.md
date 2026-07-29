@@ -134,6 +134,7 @@ Flags:
       -sso               Use sso resource flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.
       -sso_token         Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.
       -post_logout       Post logout redirect URI. Optional parameter used in the authorization_code flow. When set, the browser is redirected to this URI after the user logs out. The value is appended to the end_session_endpoint URL passed in the state parameter.
+      -logout_uri        Logout URI. Optional parameter used in the authorization_code flow.
       -provider_name     Provider name for token-exchange.
       -request_query     Add additional request query parameters to token request in format key=value&key2=value2.
       -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.

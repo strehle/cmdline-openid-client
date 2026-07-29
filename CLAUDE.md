@@ -23,7 +23,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 
 **Command dispatch:** `main()` checks if `os.Args[1]` starts with `-`; if not, it's treated as a command name and remaining args are parsed by `flag`. Empty command defaults to `authorization_code`.
 
-**Request building:** `main()` builds a shared `url.Values` (`requestMap`) with `client_id`, `client_secret`, `client_assertion`, and `token_format`, then passes it to most handlers. The `authorization_code` handler uses `requestMap` only as a source of optional params, and builds its own POST body `url.Values`; the `refresh` handler builds its own `url.Values` inside `HandleRefreshFlow`. Optional params forwarded to the authorization endpoint include: `login_hint`, `nonce`, `prompt`, `max_age`, `sso_token`, `app_tid`, `resource`, `post_logout_redirect_uri`, and `idp`.
+**Request building:** `main()` builds a shared `url.Values` (`requestMap`) with `client_id`, `client_secret`, `client_assertion`, and `token_format`, then passes it to most handlers. The `authorization_code` handler uses `requestMap` only as a source of optional params, and builds its own POST body `url.Values`; the `refresh` handler builds its own `url.Values` inside `HandleRefreshFlow`. Optional params forwarded to the authorization endpoint include: `login_hint`, `nonce`, `prompt`, `max_age`, `sso_token`, `app_tid`, `resource`, `post_logout_redirect_uri`, `logout_uri`, `refresh_expiry`, and `idp`.
 
 **Client auth precedence** (resolved in `main` before any handler is called):
 1. `-client_assertion` → external JWT (`privateKeyJwt`)

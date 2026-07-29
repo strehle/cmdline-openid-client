@@ -84,6 +84,8 @@ Both the default `tlsClient` and the mTLS client are built with the same `tls.Co
 - `HandleTokenRevocation` rewrites `/oauth2/token` → `/oauth2/revoke`.
 - `HandlePasscode` calls `GET {issuer}/service/users/passcode` (IAS-only); requires `-user_tls` P12 for user mTLS.
 - `-idp` passes an `idp` query parameter to the authorization endpoint in the `authorization_code` flow, instructing IAS which identity provider to use for authentication.
+- `-logout_uri` passes a `logout_uri` query parameter to the authorization endpoint in the `authorization_code` flow.
+- `-refresh_expiry` is forwarded to the authorization endpoint as well as token endpoint flows.
 
 ### Token Exchange parameter mapping (see `docs/token-exchange-doc.md`)
 CLI flags map to RFC 8693 parameters as follows:

@@ -127,6 +127,12 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	if request.Has("idp") {
 		query.Set("idp", request.Get("idp"))
 	}
+	if request.Has("refresh_expiry") {
+		query.Set("refresh_expiry", request.Get("refresh_expiry"))
+	}
+	if request.Has("logout_uri") {
+		query.Set("logout_uri", request.Get("logout_uri"))
+	}
 	if request.Has("resource") {
 		query.Set("resource", request.Get("resource"))
 	}

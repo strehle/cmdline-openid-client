@@ -111,6 +111,7 @@ func main() {
 			"      -sso               Token-Exchange resource SSO flow. Set true to get static parameter resource=urn:sap:identity:sso. Useful only in token-exchange.\n" +
 			"      -sso_token         Opaque one time token to create a web session in IAS. Useful only in commands sso and authorization_code.\n" +
 			"      -post_logout       Post logout redirect URI. Optional parameter used in authorization_code flow to redirect the browser after logout.\n" +
+			"      -logout_uri        Logout URI. Optional parameter used in authorization_code flow.\n" +
 			"      -provider_name     Provider name for token-exchange.\n" +
 			"      -request_query     Add additional request query parameters to token request in format key=value&key2=value2.\n" +
 			"      -export            Return only a single token from the token request. Possible values are: id_token, access_token or refresh_token.\n" +
@@ -175,6 +176,7 @@ func main() {
 	var skipTlsVerification = flag.Bool("k", false, "Skip TLS server certificate verification and issuer.")
 	var ssoTokenValue = flag.String("sso_token", "", "Opaque one time token for sso command.")
 	var postLogoutRedirectUri = flag.String("post_logout", "", "Post logout redirect URI for authorization_code flow.")
+	var logoutUri = flag.String("logout_uri", "", "Logout URI for authorization_code flow.")
 	var spName = flag.String("sp", "", "Service provider name parameter for sso command only.")
 	var requestQuery = flag.String("request_query", "", "Additional query parameters token request in format key=value&key2=value2")
 	var exportParam = flag.String("export", "", "Return only a single token from token request: id_token, access_token or refresh_token.")
@@ -781,6 +783,9 @@ func main() {
 		}
 		if *postLogoutRedirectUri != "" {
 			requestMap.Set("post_logout_redirect_uri", *postLogoutRedirectUri)
+		}
+		if *logoutUri != "" {
+			requestMap.Set("logout_uri", *logoutUri)
 		}
 		if *idpParameter != "" {
 			requestMap.Set("idp", *idpParameter)

@@ -124,6 +124,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	if request.Has("sso_token") {
 		query.Set("sso_token", request.Get("sso_token"))
 	}
+	if request.Has("idp") {
+		query.Set("idp", request.Get("idp"))
+	}
 	if request.Has("resource") {
 		query.Set("resource", request.Get("resource"))
 	}

@@ -83,6 +83,7 @@ Both the default `tlsClient` and the mTLS client are built with the same `tls.Co
 - The `sso` command rewrites `/oauth2/authorize` → `/saml2/idp/sso`.
 - `HandleTokenRevocation` rewrites `/oauth2/token` → `/oauth2/revoke`.
 - `HandlePasscode` calls `GET {issuer}/service/users/passcode` (IAS-only); requires `-user_tls` P12 for user mTLS.
+- `-idp` passes an `idp` query parameter to the authorization endpoint in the `authorization_code` flow, instructing IAS which identity provider to use for authentication.
 
 ### Token Exchange parameter mapping (see `docs/token-exchange-doc.md`)
 CLI flags map to RFC 8693 parameters as follows:

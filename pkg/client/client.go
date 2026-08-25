@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -497,11 +496,11 @@ func CreatePrivateKeyJwtKid(clientID string, keyId string, x5tId string, tokenEn
 
 func CalculateSha1FromX509(valueOrPath string) (string, error) {
 	if fileExists(valueOrPath) {
-		pemData, readerror := ioutil.ReadFile(valueOrPath)
+		pemData, readerror := os.ReadFile(valueOrPath)
 		if readerror != nil {
 			return "", fmt.Errorf("read failed: %w", readerror)
 		}
-		if bytes.Contains(pemData, []byte("-----BEGIN CERTIFICATE-----")) == false || bytes.Contains(pemData, []byte("-----END CERTIFICATE-----")) == false {
+		if !bytes.Contains(pemData, []byte("-----BEGIN CERTIFICATE-----")) || !bytes.Contains(pemData, []byte("-----END CERTIFICATE-----")) {
 			return "", fmt.Errorf("missing PEM header")
 		}
 		block, _ := pem.Decode([]byte(pemData))

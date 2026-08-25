@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -193,7 +192,7 @@ func main() {
 	var mTLS = false
 	var privateKeyJwt = ""
 	var arguments []string
-	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") == false {
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
 		arguments = os.Args[2:]
 		*command = os.Args[1]
 	} else {
@@ -338,7 +337,7 @@ func main() {
 		} else if *clientPkcs12 == "" && *userPkcs12 != "" && *clientJwtPkcs12 == "" {
 			clientPkcs12 = userPkcs12
 		}
-		p12Data, readError := ioutil.ReadFile(*clientPkcs12)
+		p12Data, readError := os.ReadFile(*clientPkcs12)
 		if readError != nil {
 			log.Println("read pkcs12 failed")
 			log.Println(readError)
@@ -414,7 +413,7 @@ func main() {
 			log.Println(err)
 			return
 		}
-		pemKey, readError := ioutil.ReadFile(*clientJwtKey)
+		pemKey, readError := os.ReadFile(*clientJwtKey)
 		if readError != nil {
 			log.Println("read private key failed")
 			log.Println(readError)
@@ -801,7 +800,7 @@ func main() {
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false
-		if verbose == true {
+		if verbose {
 			outputWritten = true
 		}
 		if *doRefresh {
@@ -888,7 +887,7 @@ func main() {
 			client.HandleTokenIntrospect(requestMap, idToken, claims.IntroSpectEndpoint, *tlsClient, verbose)
 			outputWritten = true
 		}
-		if outputWritten == false {
+		if !outputWritten {
 			showResponse(*exportParam, oidctoken)
 		}
 	}

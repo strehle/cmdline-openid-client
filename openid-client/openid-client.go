@@ -286,6 +286,7 @@ func main() {
 		IntroSpectEndpoint   string `json:"introspection_endpoint,omitempty"`
 		UserInfoEndpoint     string `json:"userinfo_endpoint,omitempty"`
 		RegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+		PAREndpoint          string `json:"pushed_authorization_request_endpoint,omitempty"`
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
@@ -796,7 +797,11 @@ func main() {
 			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		parEndpoint := ""
+		if claims.PAREndpoint != "" && (*clientSecret != "" || privateKeyJwt != "" || mTLS) {
+			parEndpoint = claims.PAREndpoint
+		}
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient, parEndpoint)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false

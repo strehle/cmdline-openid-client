@@ -63,7 +63,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) OpenIdToken {
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client, parEndpoint string) OpenIdToken {
 	var oidctoken OpenIdToken
 	clientID := request.Get("client_id")
 	authrizationScope := "openid"
@@ -145,6 +145,59 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	} else if request.Has("post_logout_redirect_uri") {
 		query.Set("state", endsession+"?client_id="+clientID+"&post_logout_redirect_uri="+url.QueryEscape(request.Get("post_logout_redirect_uri")))
 	}
+	if parEndpoint != "" {
+		parBody := url.Values{}
+		for k, vs := range query {
+			for _, v := range vs {
+				parBody.Add(k, v)
+			}
+		}
+		if request.Has("client_secret") {
+			parBody.Set("client_secret", request.Get("client_secret"))
+		}
+		if privateKeyJwt != "" {
+			parBody.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+			parBody.Set("client_assertion", privateKeyJwt)
+		}
+		parReq, parReqErr := http.NewRequest("POST", parEndpoint, strings.NewReader(parBody.Encode()))
+		if parReqErr != nil {
+			log.Fatal(parReqErr)
+		}
+		parReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		parReq.Header.Set("User-Agent", agent)
+		if verbose {
+			fmt.Println("Pushed Authorization Request to:", parEndpoint)
+		}
+		parResp, parErr := tlsClient.Do(parReq)
+		if parErr != nil {
+			log.Fatal(parErr)
+		}
+		parResult, parReadErr := io.ReadAll(parResp.Body)
+		parResp.Body.Close()
+		if parReadErr != nil {
+			log.Fatal(parReadErr)
+		}
+		if parResp.StatusCode != 201 && parResp.StatusCode != 200 {
+			log.Fatalf("PAR request failed with status %s: %s", parResp.Status, string(parResult))
+		}
+		var parResponse struct {
+			RequestURI string `json:"request_uri"`
+			ExpiresIn  int    `json:"expires_in"`
+		}
+		if err := json.Unmarshal(parResult, &parResponse); err != nil {
+			log.Fatalf("PAR response parse error: %v", err)
+		}
+		if parResponse.RequestURI == "" {
+			log.Fatalf("PAR response missing request_uri: %s", string(parResult))
+		}
+		if verbose {
+			fmt.Println("PAR request_uri:", parResponse.RequestURI)
+		}
+		query = url.Values{}
+		query.Set("client_id", clientID)
+		query.Set("request_uri", parResponse.RequestURI)
+	}
+
 	authzURL.RawQuery = query.Encode()
 
 	if !bSilent {

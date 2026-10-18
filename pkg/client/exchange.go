@@ -65,7 +65,7 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken
 	return outBodyMap
 }
 
-func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -75,6 +75,13 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
+	if dpopKey != nil {
+		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
+		if err != nil {
+			log.Fatal("DPoP proof creation failed: " + err.Error())
+		}
+		req.Header.Set("DPoP", dpopProof)
+	}
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -102,7 +109,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	return oidctoken
 }
 
-func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -112,6 +119,13 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
+	if dpopKey != nil {
+		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
+		if err != nil {
+			log.Fatal("DPoP proof creation failed: " + err.Error())
+		}
+		req.Header.Set("DPoP", dpopProof)
+	}
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)
@@ -139,7 +153,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	return oidctoken
 }
 
-func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -149,6 +163,13 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
+	if dpopKey != nil {
+		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
+		if err != nil {
+			log.Fatal("DPoP proof creation failed: " + err.Error())
+		}
+		req.Header.Set("DPoP", dpopProof)
+	}
 	resp, clientError := tlsClient.Do(req)
 	if clientError != nil {
 		log.Fatal(clientError)

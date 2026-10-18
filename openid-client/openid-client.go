@@ -472,35 +472,6 @@ func main() {
 		}
 	}
 
-	var privateKeyJwtForToken = ""
-	if claims.PAREndpoint != "" && !*noPar && privateKeyJwt != "" && *command == "" {
-		// Generate a fresh JWT for the token endpoint to avoid jti reuse (RFC 7521 §5.2)
-		if *clientJwtPkcs12 != "" && *pin != "" {
-			p12Data, _ := os.ReadFile(*clientJwtPkcs12)
-			blocks, _ := pkcs12.ToPEM(p12Data, *pin)
-			var pemData2 []byte
-			for _, b := range blocks {
-				pemData2 = append(pemData2, pem.EncodeToMemory(b)...)
-			}
-			cert2, err2 := tls.X509KeyPair(pemData2, pemData2)
-			if err2 == nil {
-				cert0, err2 := x509.ParseCertificate(cert2.Certificate[0])
-				if err2 == nil {
-					privateKeyJwtForToken, _ = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, cert2.PrivateKey)
-				}
-			}
-		} else if *clientJwtKey != "" {
-			pemKey, readError := os.ReadFile(*clientJwtKey)
-			if readError == nil {
-				signKey, err2 := jwt.ParseRSAPrivateKeyFromPEM(pemKey)
-				if err2 == nil {
-					kidValue, _ := client.CalculateSha1FromX509(*clientJwtKid)
-					x5tValue, _ := client.CalculateSha1FromX509(*clientJwtX5t)
-					privateKeyJwtForToken, _ = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, claims.TokenEndPoint, signKey)
-				}
-			}
-		}
-	}
 	requestMap := url.Values{}
 	requestMap.Set("client_id", *clientID)
 	if *clientSecret != "" {
@@ -860,7 +831,7 @@ func main() {
 		if *noPar {
 			parEndpoint = ""
 		}
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, privateKeyJwtForToken, dpopKey, *provider, *tlsClient, parEndpoint)
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient, parEndpoint)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false

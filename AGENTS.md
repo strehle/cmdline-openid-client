@@ -48,7 +48,7 @@ Request assembly is command-specific. Several non-authorization-code and non-ref
 4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid` (PEM key, explicit kid/x5t); when `-dpop` is also set, the same RSA key is used for DPoP proofs via `NewDpopKeyFromRSA`
 5. `-client_secret` → plain secret in form body
 
-When `-dpop` is set but no `-client_jwt` / `-client_jwt_key` is provided, `NewEphemeralDpopKey` generates a fresh EC P-256 key pair per invocation.
+When no `-client_jwt` or `-client_jwt_key` is provided, `NewEphemeralDpopKey` generates a fresh EC P-256 key pair per invocation. Standalone cross-invocation refresh for public-client DPoP tokens is therefore not supported.
 
 Use `openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_result.p12 -passout pass:Test1234` to generate P12 files.
 
@@ -117,7 +117,7 @@ Flags specific to `decode`:
 `decode` does not require `-issuer` or `-client_id` and exits before OIDC discovery. The implementation lives in `HandleDecodeJwt` in `pkg/client/exchange.go`, which also contains `decodeJwtPart` (base64url decode + JSON unmarshal), `printColorJSON` / `colorizeLine` / `colorizeValue` (jq-style ANSI coloring — no external dependencies), and `printJwt` (raw vs colored dispatch).
 
 ### DPoP — Demonstrating Proof of Possession (RFC 9449)
-Enabled with `-dpop`. When active, every token endpoint POST includes a `DPoP` HTTP header containing a signed proof JWT. The proof JWT has `typ: dpop+jwt` and claims `htm` (HTTP method), `htu` (endpoint URL), `iat`, and `jti`. The public key is embedded in the `jwk` header of the proof.
+Enabled with `-dpop`. When active, every token endpoint POST and DPoP-authenticated userinfo GET includes a `DPoP` HTTP header containing a signed proof JWT. The proof JWT has `typ: dpop+jwt` and claims `htm` (HTTP method), `htu` (endpoint URL), `iat`, and `jti`. The public key is embedded in the `jwk` header of the proof.
 
 Implementation lives in `pkg/client/dpop.go`:
 - `DpopKey` — holds a `crypto.PrivateKey` and a `map[string]string` JWK of the public key
@@ -127,6 +127,8 @@ Implementation lives in `pkg/client/dpop.go`:
 - `DpopKey.JwkThumbprint() string` — RFC 7638 SHA-256 canonical thumbprint (used as `dpop_jkt`)
 
 All token-endpoint handler functions (`HandleOpenIDFlow`, `HandleRefreshFlow`, `HandleClientCredential`, `HandlePasswordGrant`, `HandleTokenExchangeGrant`, `HandleJwtBearerGrant`, `HandleSamlBearerGrant`) accept a `*DpopKey` parameter; `nil` means no DPoP.
+
+DPoP proof `htu` values omit query and fragment components. The shared request helper retains `DPoP-Nonce` values per target endpoint and retries one failed nonce challenge with a new proof. DPoP userinfo requests use `Authorization: DPoP` and add the access-token hash in the proof's `ath` claim.
 
 For the **authorization code flow**, `dpop_jkt` (the JWK thumbprint of the DPoP public key) is added to the authorization request query string. This binds the authorization code to the key so the server can verify the subsequent token request uses the same key (RFC 9449 §10).
 

@@ -126,7 +126,7 @@ func main() {
 			"      -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).\n" +
 			"      -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
-			"      -dpop              Attach a DPoP proof (RFC 9449) to token requests. Re-uses the key from -client_jwt or -client_jwt_key; generates an ephemeral EC P-256 key if neither is provided.\n" +
+			"      -dpop              Attach DPoP proofs (RFC 9449) to token and userinfo requests. Re-uses the key from -client_jwt or -client_jwt_key; generates an ephemeral EC P-256 key if neither is provided.\n" +
 			"      -h                 Show this help for more details.")
 	}
 
@@ -190,7 +190,7 @@ func main() {
 	var regResponseTypes = flag.String("response_types", "", "register command: space-separated response types (RFC 7591)")
 	var regTokenEndpointAuthMethod = flag.String("token_endpoint_auth_method", "", "register command: token endpoint auth method (RFC 7591)")
 	var regJwksUri = flag.String("jwks_uri", "", "register command: URL of the client's JSON Web Key Set (RFC 7591)")
-	var doDpop = flag.Bool("dpop", false, "Attach a DPoP proof header (RFC 9449) to token requests. Re-uses the key from -client_jwt or -client_jwt_key.")
+	var doDpop = flag.Bool("dpop", false, "Attach DPoP proof headers (RFC 9449) to token and userinfo requests. Re-uses the key from -client_jwt or -client_jwt_key.")
 	var mTLS = false
 	var privateKeyJwt = ""
 	var dpopKey *client.DpopKey
@@ -738,7 +738,7 @@ func main() {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
 			}
-			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
+			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, dpopKey, *tlsClient, verbose)
 		} else if *command == "token-list" {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
@@ -819,7 +819,7 @@ func main() {
 			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient)
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false

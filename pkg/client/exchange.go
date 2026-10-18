@@ -75,14 +75,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, dpopKey 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	if dpopKey != nil {
-		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
-		if err != nil {
-			log.Fatal("DPoP proof creation failed: " + err.Error())
-		}
-		req.Header.Set("DPoP", dpopProof)
-	}
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -119,14 +112,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, dpopKey *Dpo
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	if dpopKey != nil {
-		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
-		if err != nil {
-			log.Fatal("DPoP proof creation failed: " + err.Error())
-		}
-		req.Header.Set("DPoP", dpopProof)
-	}
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -163,14 +149,7 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, dpopKey *Dp
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	if dpopKey != nil {
-		dpopProof, err := CreateDpopProof("POST", tokenEndpoint, dpopKey)
-		if err != nil {
-			log.Fatal("DPoP proof creation failed: " + err.Error())
-		}
-		req.Header.Set("DPoP", dpopProof)
-	}
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -308,23 +287,44 @@ func HandleTokenRevocation(request url.Values, token string, tokenEndpoint strin
 	return resultString
 }
 
-func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	req, requestError := http.NewRequest("GET", tokenEndpoint, nil)
+func fetchUserInfo(token string, userinfoEndpoint string, dpopKey *DpopKey, tlsClient http.Client) (map[string]interface{}, error) {
+	req, requestError := http.NewRequest("GET", userinfoEndpoint, nil)
 	if requestError != nil {
-		log.Fatal(requestError)
+		return nil, requestError
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
+	if dpopKey != nil {
+		req.Header.Set("Authorization", "DPoP "+token)
+	} else {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpopAccessToken(req, dpopKey, tlsClient, token)
 	if clientError != nil {
-		log.Fatal(clientError)
+		return nil, clientError
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("userinfo request failed with %s: %s", resp.Status, string(body))
+	}
 	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func HandleUserInfo(token string, userinfoEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) string {
+	result, err := fetchUserInfo(token, userinfoEndpoint, dpopKey, tlsClient)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var resultString string
-	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
 		jsonStr, marshalError := json.MarshalIndent(result, "", "    ")
 		if marshalError != nil {

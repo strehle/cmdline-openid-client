@@ -5,7 +5,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -61,8 +65,6 @@ func TestJwkThumbprint_RSA(t *testing.T) {
 	}
 }
 
-
-
 func TestCreateDpopProof_RSA(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -72,7 +74,7 @@ func TestCreateDpopProof_RSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := CreateDpopProof("POST", "https://example.com/token", dk)
+	proof, err := CreateDpopProof("POST", "https://example.com/token?audience=api#fragment", dk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,6 +114,189 @@ func TestNewEphemeralDpopKey(t *testing.T) {
 	}
 	if proof == "" {
 		t.Fatal("expected non-empty proof")
+	}
+}
+
+func TestCreateDpopProofRejectsNilKey(t *testing.T) {
+	if _, err := CreateDpopProof("POST", "https://example.com/token", nil); err == nil {
+		t.Fatal("expected nil DPoP key to be rejected")
+	}
+}
+
+func TestDpopNonceChallengeIsRetriedAndStored(t *testing.T) {
+	key, err := NewEphemeralDpopKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestCount := 0
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		proof := r.Header.Get("DPoP")
+		parts := strings.Split(proof, ".")
+		if len(parts) != 3 {
+			t.Errorf("request %d: expected a DPoP proof", requestCount)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		claims, err := decodeJwtPart(parts[1])
+		if err != nil {
+			t.Errorf("request %d: decode DPoP claims: %v", requestCount, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		switch requestCount {
+		case 1:
+			if claims["nonce"] != nil {
+				t.Errorf("first request unexpectedly included nonce %v", claims["nonce"])
+			}
+			if claims["htu"] != server.URL+"/token" {
+				t.Errorf("first request htu = %v", claims["htu"])
+			}
+			w.Header().Set("DPoP-Nonce", "challenge-nonce")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `{"error":"use_dpop_nonce"}`)
+		case 2:
+			if claims["nonce"] != "challenge-nonce" {
+				t.Errorf("retried request nonce = %v", claims["nonce"])
+			}
+			w.Header().Set("DPoP-Nonce", "next-nonce")
+			w.WriteHeader(http.StatusOK)
+		case 3:
+			if claims["nonce"] != "next-nonce" {
+				t.Errorf("subsequent request nonce = %v", claims["nonce"])
+			}
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected request %d", requestCount)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL+"/token?audience=api", strings.NewReader("grant_type=client_credentials"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := doRequestWithDpop(req, key, *server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("retry status = %d", resp.StatusCode)
+	}
+
+	req, err = http.NewRequest("POST", server.URL+"/token?grant=refresh", strings.NewReader("grant_type=refresh_token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = doRequestWithDpop(req, key, *server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("subsequent status = %d", resp.StatusCode)
+	}
+	if requestCount != 3 {
+		t.Fatalf("request count = %d, want 3", requestCount)
+	}
+}
+
+func TestDpopResourceRequestIncludesAthAndRetriesNonce(t *testing.T) {
+	key, err := NewEphemeralDpopKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	accessToken := "access-token"
+	ath := sha256.Sum256([]byte(accessToken))
+	expectedAth := base64.RawURLEncoding.EncodeToString(ath[:])
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if r.Header.Get("Authorization") != "DPoP "+accessToken {
+			t.Errorf("authorization = %q", r.Header.Get("Authorization"))
+		}
+		parts := strings.Split(r.Header.Get("DPoP"), ".")
+		if len(parts) != 3 {
+			t.Errorf("request %d: expected a DPoP proof", requestCount)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		claims, err := decodeJwtPart(parts[1])
+		if err != nil {
+			t.Errorf("request %d: decode DPoP claims: %v", requestCount, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if claims["ath"] != expectedAth {
+			t.Errorf("request %d: ath = %v", requestCount, claims["ath"])
+		}
+
+		if requestCount == 1 {
+			w.Header().Set("DPoP-Nonce", "resource-nonce")
+			w.Header().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if claims["nonce"] != "resource-nonce" {
+			t.Errorf("retried request nonce = %v", claims["nonce"])
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"sub":"user"}`)
+	}))
+	defer server.Close()
+
+	result, err := fetchUserInfo(accessToken, server.URL+"/userinfo?fields=sub", key, *server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["sub"] != "user" {
+		t.Fatalf("userinfo sub = %v", result["sub"])
+	}
+	if requestCount != 2 {
+		t.Fatalf("request count = %d, want 2", requestCount)
+	}
+}
+
+func TestDpopNonceDoesNotRetryDifferentOAuthError(t *testing.T) {
+	key, err := NewEphemeralDpopKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("DPoP-Nonce", "next-nonce")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, `{"error":"invalid_grant"}`)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL+"/token", strings.NewReader("grant_type=authorization_code"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := doRequestWithDpop(req, key, *server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requestCount != 1 {
+		t.Fatalf("request count = %d, want 1", requestCount)
+	}
+	if string(body) != `{"error":"invalid_grant"}` {
+		t.Fatalf("response body = %q", body)
 	}
 }
 

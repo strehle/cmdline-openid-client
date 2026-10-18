@@ -33,7 +33,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid`; if `-dpop` set, same RSA key used for DPoP via `NewDpopKeyFromRSA`
 5. `-client_secret` → plain secret in form body (exception: `HandleCorpIdpExchangeFlow` uses HTTP Basic Auth instead)
 
-**DPoP (RFC 9449):** `-dpop` flag attaches a `DPoP` proof header to all token endpoint requests. Key reused from `-client_jwt`/`-client_jwt_key`; ephemeral EC P-256 generated if neither is set. In the authorization code flow, `dpop_jkt` (RFC 7638 JWK thumbprint) is added to the authorization request. Implementation in `pkg/client/dpop.go`.
+**DPoP (RFC 9449):** `-dpop` flag attaches a `DPoP` proof header to all token endpoint requests and DPoP-authenticated userinfo requests. Key reused from `-client_jwt`/`-client_jwt_key`; ephemeral EC P-256 generated if neither is set. Server nonce challenges are retried once and nonces are retained by target endpoint for later requests in the invocation. Userinfo proofs include `ath` and use `Authorization: DPoP`. In the authorization code flow, `dpop_jkt` (RFC 7638 JWK thumbprint) is added to the authorization request. Implementation in `pkg/client/dpop.go`.
 
 **OIDC discovery:** `oidc.NewProvider` fetches `.well-known/openid-configuration`. If discovery fails and `-url` is set with a non-empty command, endpoints fall back to the `-url` value directly (does not apply to the default `authorization_code` flow).
 

@@ -12,6 +12,57 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// TestJwkThumbprint_EC verifies dpop_jkt computation matches RFC 7638 canonical form.
+func TestJwkThumbprint_EC(t *testing.T) {
+	// Use the RFC 7638 §3.3 example key (EC P-256).
+	dk := &DpopKey{
+		PublicJwk: map[string]string{
+			"kty": "EC",
+			"crv": "P-256",
+			"x":   "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+			"y":   "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+		},
+	}
+	got, err := dk.JwkThumbprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Canonical JSON: {"crv":"P-256","kty":"EC","x":"f83...","y":"x_F..."}
+	// SHA-256 thumbprint verified independently.
+	want := "oKIywvGUpTVTyxMQ3bwIIeQUudfr_CkLMjCE19ECD-U"
+	if got != want {
+		t.Errorf("JwkThumbprint() = %q, want %q", got, want)
+	}
+	// Must be valid base64url without padding
+	if _, err := base64.RawURLEncoding.DecodeString(got); err != nil {
+		t.Errorf("thumbprint is not valid base64url: %v", err)
+	}
+}
+
+func TestJwkThumbprint_RSA(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dk, err := NewDpopKeyFromRSA(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jkt, err := dk.JwkThumbprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jkt == "" {
+		t.Error("expected non-empty thumbprint")
+	}
+	// Must be valid base64url without padding
+	if _, err := base64.RawURLEncoding.DecodeString(jkt); err != nil {
+		t.Errorf("thumbprint is not valid base64url: %v", err)
+	}
+}
+
+
+
 func TestCreateDpopProof_RSA(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

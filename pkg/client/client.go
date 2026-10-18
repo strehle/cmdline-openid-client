@@ -145,6 +145,13 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	} else if request.Has("post_logout_redirect_uri") {
 		query.Set("state", endsession+"?client_id="+clientID+"&post_logout_redirect_uri="+url.QueryEscape(request.Get("post_logout_redirect_uri")))
 	}
+	if dpopKey != nil {
+		jkt, err := dpopKey.JwkThumbprint()
+		if err != nil {
+			log.Fatal("DPoP JWK thumbprint failed: " + err.Error())
+		}
+		query.Set("dpop_jkt", jkt)
+	}
 	authzURL.RawQuery = query.Encode()
 
 	if !bSilent {

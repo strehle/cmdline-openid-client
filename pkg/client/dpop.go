@@ -6,9 +6,13 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -81,6 +85,56 @@ func NewEphemeralDpopKey() (*DpopKey, error) {
 		return nil, fmt.Errorf("generate DPoP key: %w", err)
 	}
 	return NewDpopKeyFromEC(priv)
+}
+
+// JwkThumbprint returns the RFC 7638 SHA-256 thumbprint of the public key,
+// base64url-encoded. This is the value to send as dpop_jkt in the authorization request.
+func (dk *DpopKey) JwkThumbprint() (string, error) {
+	// RFC 7638: serialize only the required members, lexicographically sorted, no extra whitespace.
+	canonical, err := canonicalJwk(dk.PublicJwk)
+	if err != nil {
+		return "", fmt.Errorf("marshal JWK thumbprint: %w", err)
+	}
+	sum := sha256.Sum256(canonical)
+	return base64.RawURLEncoding.EncodeToString(sum[:]), nil
+}
+
+// canonicalJwk returns the RFC 7638 canonical JSON for the required JWK members.
+// Keys are emitted in lexicographic order with no extra whitespace.
+func canonicalJwk(jwk map[string]string) ([]byte, error) {
+	var keys []string
+	switch jwk["kty"] {
+	case "EC":
+		keys = []string{"crv", "kty", "x", "y"}
+	case "RSA":
+		keys = []string{"e", "kty", "n"}
+	default:
+		for k := range jwk {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+	}
+
+	var buf strings.Builder
+	buf.WriteByte('{')
+	for i, k := range keys {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		keyJSON, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		valJSON, err := json.Marshal(jwk[k])
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(keyJSON)
+		buf.WriteByte(':')
+		buf.Write(valJSON)
+	}
+	buf.WriteByte('}')
+	return []byte(buf.String()), nil
 }
 
 // CreateDpopProof creates a signed DPoP proof JWT for the given HTTP method and URL.

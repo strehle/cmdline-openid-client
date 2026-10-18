@@ -10,6 +10,7 @@ openid-client/openid-client.go   # main package — CLI entry point, flag parsin
 pkg/client/
   client.go    # authorization_code, refresh, client_credentials, password flows + private_key_jwt helpers
   exchange.go  # token-exchange, jwt-bearer, saml-bearer, passcode, introspect, revoke, userinfo, token-list, register (dynamic client registration)
+  dpop.go      # DPoP proof generation (RFC 9449): DpopKey type, CreateDpopProof, JwkThumbprint
   token.go     # shared OpenIdToken struct {IdToken, AccessToken, RefreshToken}
 pkg/cf/
   config.go            # read/write CF ~/.cf/config.json for UAA simulation (-cf flag)
@@ -42,10 +43,12 @@ Request assembly is command-specific. Several non-authorization-code and non-ref
 
 ### Client authentication precedence (in `main`)
 1. `-client_assertion` (external JWT) → sets `privateKeyJwt` (RFC 7523 / OAuth2 flavour — token from another provider)
-2. `-client_jwt` P12 + `-pin` → `CreatePrivateKeyJwt` (x5t thumbprint as kid; OIDC `private_key_jwt` flavour)
+2. `-client_jwt` P12 + `-pin` → `CreatePrivateKeyJwt` (x5t thumbprint as kid; OIDC `private_key_jwt` flavour); when `-dpop` is also set, the same key is used for DPoP proofs via `NewDpopKeyFromX509`
 3. `-client_tls` P12 + `-pin` → mutual TLS `http.Client` (RFC 8705)
-4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid` (PEM key, explicit kid/x5t)
+4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid` (PEM key, explicit kid/x5t); when `-dpop` is also set, the same RSA key is used for DPoP proofs via `NewDpopKeyFromRSA`
 5. `-client_secret` → plain secret in form body
+
+When `-dpop` is set but no `-client_jwt` / `-client_jwt_key` is provided, `NewEphemeralDpopKey` generates a fresh EC P-256 key pair per invocation.
 
 Use `openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -out final_result.p12 -passout pass:Test1234` to generate P12 files.
 
@@ -113,6 +116,20 @@ Flags specific to `decode`:
 
 `decode` does not require `-issuer` or `-client_id` and exits before OIDC discovery. The implementation lives in `HandleDecodeJwt` in `pkg/client/exchange.go`, which also contains `decodeJwtPart` (base64url decode + JSON unmarshal), `printColorJSON` / `colorizeLine` / `colorizeValue` (jq-style ANSI coloring — no external dependencies), and `printJwt` (raw vs colored dispatch).
 
+### DPoP — Demonstrating Proof of Possession (RFC 9449)
+Enabled with `-dpop`. When active, every token endpoint POST includes a `DPoP` HTTP header containing a signed proof JWT. The proof JWT has `typ: dpop+jwt` and claims `htm` (HTTP method), `htu` (endpoint URL), `iat`, and `jti`. The public key is embedded in the `jwk` header of the proof.
+
+Implementation lives in `pkg/client/dpop.go`:
+- `DpopKey` — holds a `crypto.PrivateKey` and a `map[string]string` JWK of the public key
+- `NewDpopKeyFromRSA` / `NewDpopKeyFromEC` / `NewDpopKeyFromX509` — construct from existing key material
+- `NewEphemeralDpopKey` — generates a fresh EC P-256 key pair (used when no client key is present)
+- `CreateDpopProof(method, htu, *DpopKey) string` — builds and signs the proof JWT
+- `DpopKey.JwkThumbprint() string` — RFC 7638 SHA-256 canonical thumbprint (used as `dpop_jkt`)
+
+All token-endpoint handler functions (`HandleOpenIDFlow`, `HandleRefreshFlow`, `HandleClientCredential`, `HandlePasswordGrant`, `HandleTokenExchangeGrant`, `HandleJwtBearerGrant`, `HandleSamlBearerGrant`) accept a `*DpopKey` parameter; `nil` means no DPoP.
+
+For the **authorization code flow**, `dpop_jkt` (the JWK thumbprint of the DPoP public key) is added to the authorization request query string. This binds the authorization code to the key so the server can verify the subsequent token request uses the same key (RFC 9449 §10).
+
 ### register command (see `docs/register.md`)
 Performs OAuth 2.0 Dynamic Client Registration (RFC 7591). Builds a JSON client-metadata map in `main`, POSTs it to the registration endpoint, and prints the response via `HandleClientRegistration` in `pkg/client/exchange.go`.
 
@@ -156,8 +173,9 @@ Note: `-client_id` defaults to `T000000` when omitted in `passcode` command.
 Reads `~/.cf/config.json` via `pkg/cf` to populate issuer/client credentials; writes tokens back after successful calls (`cf.WriteUaaConfig`). `-origin` creates a UAA-specific `login_hint` JSON parameter.
 
 ## Key Files to Read First
-- `openid-client/openid-client.go` — entire CLI logic in one `main()` (798 lines)
+- `openid-client/openid-client.go` — entire CLI logic in one `main()` (~949 lines)
 - `pkg/client/exchange.go` — user-agent constant `agent = "OpenId Client/GO/1"` shared across all HTTP calls
+- `pkg/client/dpop.go` — DPoP proof generation and JWK thumbprint (RFC 9449 / RFC 7638)
 - `pkg/client/token.go` — the single shared `OpenIdToken` struct
 - `docs/client-auth-doc.md` — when to use mTLS vs private_key_jwt and P12 generation steps
 - `docs/token-exchange-doc.md` — parameter mapping and SCI-specific token type URNs

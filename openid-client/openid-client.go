@@ -290,6 +290,7 @@ func main() {
 		UserInfoEndpoint     string `json:"userinfo_endpoint,omitempty"`
 		RegistrationEndpoint string `json:"registration_endpoint,omitempty"`
 		PAREndpoint          string `json:"pushed_authorization_request_endpoint,omitempty"`
+		Issuer               string `json:"issuer,omitempty"`
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
@@ -330,6 +331,10 @@ func main() {
 		},
 	}
 
+	privateKeyJwtAudience := claims.TokenEndPoint
+	if *command == "" && claims.PAREndpoint != "" {
+		privateKeyJwtAudience = claims.Issuer
+	}
 	if *clientAssertion != "" {
 		if *clientJwtKey != "" || *clientJwtPkcs12 != "" {
 			log.Fatal("Invalid state. Provide parameter client_assertion without other private_key_jwt parameters")
@@ -369,7 +374,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, cert.PrivateKey)
+			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, privateKeyJwtAudience, cert.PrivateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -444,7 +449,7 @@ func main() {
 				return
 			}
 		}
-		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, claims.TokenEndPoint, signKey)
+		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, privateKeyJwtAudience, signKey)
 		if err != nil {
 			log.Fatal(err)
 			return
@@ -820,11 +825,7 @@ func main() {
 			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
-		parEndpoint := ""
-		if claims.PAREndpoint != "" {
-			parEndpoint = claims.PAREndpoint
-		}
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient, parEndpoint)
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient, claims.PAREndpoint)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false

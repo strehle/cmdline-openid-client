@@ -821,7 +821,7 @@ func main() {
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
 		parEndpoint := ""
-		if claims.PAREndpoint != "" && (*clientSecret != "" || privateKeyJwt != "" || mTLS) {
+		if claims.PAREndpoint != "" {
 			parEndpoint = claims.PAREndpoint
 		}
 		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient, parEndpoint)

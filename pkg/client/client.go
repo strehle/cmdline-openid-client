@@ -65,7 +65,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, userinfo string, privateKeyJwt string, dpopKey *DpopKey, provider oidc.Provider, tlsClient http.Client, parEndpoint string) OpenIdToken {
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, userinfo string, privateKeyJwt string, privateKeyJwtForToken string, dpopKey *DpopKey, provider oidc.Provider, tlsClient http.Client, parEndpoint string) OpenIdToken {
 	var oidctoken OpenIdToken
 	clientID := request.Get("client_id")
 	authrizationScope := "openid"
@@ -201,6 +201,9 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 		}
 		if verbose {
 			fmt.Println("PAR request_uri:", parResponse.RequestURI)
+			if parResponse.ExpiresIn > 0 {
+				fmt.Printf("PAR request_uri expires in %d seconds\n", parResponse.ExpiresIn)
+			}
 		}
 		query = url.Values{}
 		query.Set("client_id", clientID)
@@ -262,9 +265,13 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	if request.Has("resource") {
 		vals.Set("resource", request.Get("resource"))
 	}
-	if privateKeyJwt != "" {
+	tokenJwt := privateKeyJwt
+	if privateKeyJwtForToken != "" {
+		tokenJwt = privateKeyJwtForToken
+	}
+	if tokenJwt != "" {
 		vals.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
-		vals.Set("client_assertion", privateKeyJwt)
+		vals.Set("client_assertion", tokenJwt)
 	}
 	req, requestError := http.NewRequest("POST", provider.Endpoint().TokenURL, strings.NewReader(vals.Encode()))
 	if requestError != nil {

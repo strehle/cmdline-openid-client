@@ -42,7 +42,9 @@ type OIDC_Token struct {
 	AccessToken string `json:"access_token"`
 	// RefreshToken is a token that's used by the application
 	RefreshToken string `json:"refresh_token,omitempty"`
-	raw          interface{}
+	// TokenType identifies whether the access token uses Bearer or DPoP authentication.
+	TokenType string `json:"token_type,omitempty"`
+	raw       interface{}
 }
 
 func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,7 @@ func (h *callbackEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.shutdownSignal <- "shutdown"
 }
 
-func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, privateKeyJwt string, provider oidc.Provider, tlsClient http.Client) OpenIdToken {
+func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackURL string, scopeParameter string, tokenFormatParameter string, port string, endsession string, userinfo string, privateKeyJwt string, dpopKey *DpopKey, provider oidc.Provider, tlsClient http.Client) OpenIdToken {
 	var oidctoken OpenIdToken
 	clientID := request.Get("client_id")
 	authrizationScope := "openid"
@@ -145,6 +147,13 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	} else if request.Has("post_logout_redirect_uri") {
 		query.Set("state", endsession+"?client_id="+clientID+"&post_logout_redirect_uri="+url.QueryEscape(request.Get("post_logout_redirect_uri")))
 	}
+	if dpopKey != nil {
+		jkt, err := dpopKey.JwkThumbprint()
+		if err != nil {
+			log.Fatal("DPoP JWK thumbprint failed: " + err.Error())
+		}
+		query.Set("dpop_jkt", jkt)
+	}
 	authzURL.RawQuery = query.Encode()
 
 	if !bSilent {
@@ -210,7 +219,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -231,9 +240,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 			fmt.Println("==========")
 		}
 		var jsonStr = result
-		ctx := context.Background()
 		var myToken OIDC_Token
-		var stanardToken oauth2.Token
 		json.Unmarshal([]byte(jsonStr), &myToken)
 		/*
 			fmt.Println("Access Token  ", myToken.AccessToken)
@@ -246,17 +253,21 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 		if myToken.AccessToken == "" {
 			fmt.Println(string(jsonStr))
 		} else {
-			// access token
-			stanardToken.AccessToken = myToken.AccessToken
 			oidctoken.IdToken = myToken.IdToken
-			// refresh token
-			stanardToken.RefreshToken = myToken.RefreshToken
 			oidctoken.RefreshToken = myToken.RefreshToken
 			oidctoken.AccessToken = myToken.AccessToken
+			oidctoken.TokenType = myToken.TokenType
 			if verbose {
 				// Getting now the userInfo
 				fmt.Println("Call now UserInfo with access_token")
-				userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(&stanardToken))
+				var userInfoDpopKey *DpopKey
+				if strings.EqualFold(myToken.TokenType, "DPoP") {
+					if dpopKey == nil {
+						log.Fatal("token response requires DPoP userinfo authentication, but no DPoP key is available")
+					}
+					userInfoDpopKey = dpopKey
+				}
+				outUserInfo, err := fetchUserInfo(myToken.AccessToken, userinfo, userInfoDpopKey, tlsClient)
 				if err != nil {
 					log.Fatal(err)
 					return oidctoken
@@ -271,12 +282,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 				}
 
 				var outProfile map[string]interface{}
-				var outUserInfo map[string]interface{}
 				if err := idToken.Claims(&outProfile); err != nil {
-					log.Fatal(err)
-					return oidctoken
-				}
-				if err := userInfo.Claims(&outUserInfo); err != nil {
 					log.Fatal(err)
 					return oidctoken
 				}
@@ -310,7 +316,7 @@ func HandleOpenIDFlow(request url.Values, verbose bool, bSilent bool, callbackUR
 	return oidctoken
 }
 
-func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, tlsClient http.Client, tokenEndpointUrl string) (OpenIdToken, error) {
+func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid string, clientSecret string, existingRefresh string, refreshExpiry string, privateKeyJwt string, dpopKey *DpopKey, tlsClient http.Client, tokenEndpointUrl string) (OpenIdToken, error) {
 	var myToken OpenIdToken
 	var errorString error
 	vals := url.Values{}
@@ -337,7 +343,7 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -366,7 +372,7 @@ func HandleRefreshFlow(verbose bool, bSilent bool, clientID string, appTid strin
 	return myToken, errorString
 }
 
-func HandleClientCredential(request url.Values, bearerToken string, tokenEndpointUrl string, tlsClient http.Client, verbose bool) string {
+func HandleClientCredential(request url.Values, bearerToken string, tokenEndpointUrl string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) string {
 	refreshToken := ""
 	request.Set("grant_type", "client_credentials")
 	req, requestError := http.NewRequest("POST", tokenEndpointUrl, strings.NewReader(request.Encode()))
@@ -379,7 +385,7 @@ func HandleClientCredential(request url.Values, bearerToken string, tokenEndpoin
 	if bearerToken != "" {
 		req.Header.Set("Authorization", "Bearer "+bearerToken)
 	}
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -409,7 +415,7 @@ func HandleClientCredential(request url.Values, bearerToken string, tokenEndpoin
 	return refreshToken
 }
 
-func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "password")
 	req, requestError := http.NewRequest("POST", tokenEndpointUrl, strings.NewReader(request.Encode()))
@@ -419,7 +425,7 @@ func HandlePasswordGrant(request url.Values, tokenEndpointUrl string, tlsClient 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}

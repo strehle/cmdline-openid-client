@@ -126,6 +126,7 @@ func main() {
 			"      -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).\n" +
 			"      -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).\n" +
 			"      -v                 Verbose. Show more details about calls.\n" +
+			"      -dpop              Attach DPoP proofs (RFC 9449) to token and userinfo requests. Re-uses the key from -client_jwt or -client_jwt_key; generates an ephemeral EC P-256 key if neither is provided.\n" +
 			"      -h                 Show this help for more details.")
 	}
 
@@ -189,8 +190,10 @@ func main() {
 	var regResponseTypes = flag.String("response_types", "", "register command: space-separated response types (RFC 7591)")
 	var regTokenEndpointAuthMethod = flag.String("token_endpoint_auth_method", "", "register command: token endpoint auth method (RFC 7591)")
 	var regJwksUri = flag.String("jwks_uri", "", "register command: URL of the client's JSON Web Key Set (RFC 7591)")
+	var doDpop = flag.Bool("dpop", false, "Attach DPoP proof headers (RFC 9449) to token and userinfo requests. Re-uses the key from -client_jwt or -client_jwt_key.")
 	var mTLS = false
 	var privateKeyJwt = ""
+	var dpopKey *client.DpopKey
 	var arguments []string
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
 		arguments = os.Args[2:]
@@ -369,6 +372,12 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			if *doDpop {
+				dpopKey, err = client.NewDpopKeyFromX509(*cert0, cert.PrivateKey)
+				if err != nil {
+					log.Fatal("DPoP key setup failed: " + err.Error())
+				}
+			}
 			if *command == "jwks" {
 				fromRawKey, err := jwk.FromRaw(cert0.PublicKey)
 				if err != nil {
@@ -439,6 +448,20 @@ func main() {
 			log.Fatal(err)
 			return
 		}
+		if *doDpop {
+			dpopKey, err = client.NewDpopKeyFromRSA(signKey)
+			if err != nil {
+				log.Fatal("DPoP key setup failed: " + err.Error())
+			}
+		}
+	}
+
+	if *doDpop && dpopKey == nil {
+		var err error
+		dpopKey, err = client.NewEphemeralDpopKey()
+		if err != nil {
+			log.Fatal("DPoP ephemeral key generation failed: " + err.Error())
+		}
 	}
 
 	requestMap := url.Values{}
@@ -507,7 +530,7 @@ func main() {
 			requestMap.Set("refresh_expiry", *refreshExpiry)
 		}
 		if *command == "client_credentials" {
-			client.HandleClientCredential(requestMap, *bearerToken, claims.TokenEndPoint, *tlsClient, verbose)
+			client.HandleClientCredential(requestMap, *bearerToken, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 		} else if *command == "password" {
 			if *userName == "" {
 				*userName = os.Getenv("OPENID_USER")
@@ -523,7 +546,7 @@ func main() {
 				log.Fatal("password is required to run this command")
 			}
 			requestMap.Set("password", *userPassword)
-			var responseToken = client.HandlePasswordGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			var responseToken = client.HandlePasswordGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 			if *doCfCall {
 				cf.WriteUaaConfig(*issEndPoint, responseToken)
 			} else {
@@ -546,7 +569,7 @@ func main() {
 				refreshToken = *assertionToken
 			}
 			var bSilent = (*resourceSso || *doRefresh) && !verbose
-			var newRefresh, error = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
+			var newRefresh, error = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, dpopKey, *tlsClient, claims.TokenEndPoint)
 			if verbose {
 				log.Println("Old refresh token: " + refreshToken)
 				log.Println("New refresh token: " + newRefresh.RefreshToken)
@@ -588,7 +611,7 @@ func main() {
 					requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:"+*requestedType)
 				}
 			}
-			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 			if *doCfCall {
 				fmt.Println(exchangedTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, exchangedTokenResponse)
@@ -615,7 +638,7 @@ func main() {
 				log.Fatal("assertion parameter not set. Needed to pass it for JWT bearer")
 			}
 			requestMap.Set("assertion", *assertionToken)
-			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			var jwtBearerTokenResponse = client.HandleJwtBearerGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 			if *doCfCall {
 				fmt.Println(jwtBearerTokenResponse.AccessToken)
 				cf.WriteUaaConfig(*issEndPoint, jwtBearerTokenResponse)
@@ -626,7 +649,7 @@ func main() {
 				requestMap.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
 				requestMap.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 				requestMap.Set("subject_token", jwtBearerTokenResponse.AccessToken)
-				var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+				var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 				if *exportParam != "" {
 					showResponse(*exportParam, exchangedTokenResponse)
 				} else {
@@ -655,7 +678,7 @@ func main() {
 				log.Fatal("assertion parameter not set. Needed to pass it for SAML bearer")
 			}
 			requestMap.Set("assertion", *assertionToken)
-			var samlBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			var samlBearerTokenResponse = client.HandleSamlBearerGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 			if *exportParam != "" {
 				showResponse(*exportParam, samlBearerTokenResponse)
 			} else {
@@ -715,7 +738,7 @@ func main() {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
 			}
-			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, *tlsClient, verbose)
+			client.HandleUserInfo(*tokenInput, claims.UserInfoEndpoint, dpopKey, *tlsClient, verbose)
 		} else if *command == "token-list" {
 			if *tokenInput == "" {
 				log.Fatal("token parameter not set. Needed to pass it for validation")
@@ -796,7 +819,7 @@ func main() {
 			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, privateKeyJwt, *provider, *tlsClient)
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false
@@ -808,7 +831,7 @@ func main() {
 				log.Println("No refresh token received.")
 				return
 			}
-			var newRefresh, err = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, *tlsClient, claims.TokenEndPoint)
+			var newRefresh, err = client.HandleRefreshFlow(verbose, bSilent, *clientID, *appTid, *clientSecret, refreshToken, *refreshExpiry, privateKeyJwt, dpopKey, *tlsClient, claims.TokenEndPoint)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -869,7 +892,7 @@ func main() {
 				}
 			}
 
-			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, *tlsClient, verbose)
+			var exchangedTokenResponse = client.HandleTokenExchangeGrant(requestMap, claims.TokenEndPoint, dpopKey, *tlsClient, verbose)
 			if *exportParam != "" {
 				showResponse(*exportParam, exchangedTokenResponse)
 			} else {

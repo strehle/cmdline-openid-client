@@ -1,6 +1,6 @@
  # SAP Cloud Identity Services - openid-client
  
-This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC compliant server, mainly created to test new features like PKCE and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
+This project provides a command line interface (CLI) to generate OpenID (OIDC) Tokens from an OIDC compliant server, mainly created to test new features like PKCE, DPoP, Pushed Authorization and Public Client support or Private Key JWT. Mainly for IAS compliance tests. However, any other OIDC provider can be used to get tokens.
 The API documentation is available here: https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/openid-connect  
 
 The execution will open a port on your localhost machine. Please ensure that this port is usable. In addition, you need to specify the redirect_uri in your OIDC server,
@@ -65,6 +65,22 @@ Register a new OAuth 2.0 client at the provider's registration endpoint. See [Dy
 ```text
 openid-client register -issuer https://<tenant>.accounts.ondemand.com -bearer <initial-access-token> -client_name my-app -redirect_uris "https://my-app.example.com/callback"
 ```
+#### DPoP — Demonstrating Proof of Possession (RFC 9449)
+Attach DPoP proof headers to token and userinfo requests. Reuses the key from `-client_jwt` or `-client_jwt_key`; generates an ephemeral EC P-256 key if neither is provided. Server-provided DPoP nonces are retained and nonce challenges are retried once. Userinfo requests made with `-dpop` use the `DPoP` authorization scheme and include the required access-token hash (`ath`).
+
+For client credentials with a P12 key (client assertion + DPoP proof, same key):
+```text
+openid-client client_credentials -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_jwt ./client.p12 -pin Test1234 -dpop
+```
+For the authorization code flow, `-dpop` also adds `dpop_jkt` (the JWK thumbprint) to the authorization request, binding the issued code to the key:
+```text
+openid-client -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_jwt ./client.p12 -pin Test1234 -dpop
+```
+Without a client key, an ephemeral key is generated per invocation (useful for public clients):
+```text
+openid-client client_credentials -issuer https://<tenant>.accounts.ondemand.com -client_id 11111111-your-client-11111111 -client_secret your-secret -dpop
+```
+Because an ephemeral key lasts for one invocation, a public-client DPoP refresh token must be refreshed in that same invocation; standalone cross-invocation refresh is not supported. Clients using private key JWT authentication reuse `-client_jwt` or `-client_jwt_key` as the DPoP key across invocations.
 
 ### How to run in detail
 ```text
@@ -150,6 +166,7 @@ Flags:
       -token_endpoint_auth_method  register command: token endpoint authentication method (RFC 7591).
       -jwks_uri          register command: URL of the client's JSON Web Key Set (RFC 7591).
       -v                 Verbose. Show more details about calls.
+      -dpop              Attach DPoP proofs (RFC 9449) to token and userinfo requests. Reuses the key from -client_jwt or -client_jwt_key; generates an ephemeral EC P-256 key if neither is provided. In the authorization_code flow, also adds dpop_jkt to the authorization request.
       -h                 Show this help for more details.
 ```
 

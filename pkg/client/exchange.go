@@ -65,7 +65,7 @@ func HandleCorpIdpExchangeFlow(clientID string, clientSecret string, bearerToken
 	return outBodyMap
 }
 
-func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -75,7 +75,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -102,7 +102,7 @@ func HandleTokenExchangeGrant(request url.Values, tokenEndpoint string, tlsClien
 	return oidctoken
 }
 
-func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -112,7 +112,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -139,7 +139,7 @@ func HandleJwtBearerGrant(request url.Values, tokenEndpoint string, tlsClient ht
 	return oidctoken
 }
 
-func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient http.Client, verbose bool) OpenIdToken {
+func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) OpenIdToken {
 	var oidctoken OpenIdToken
 	request.Set("grant_type", "urn:ietf:params:oauth:grant-type:saml2-bearer")
 	req, requestError := http.NewRequest("POST", tokenEndpoint, strings.NewReader(request.Encode()))
@@ -149,7 +149,7 @@ func HandleSamlBearerGrant(request url.Values, tokenEndpoint string, tlsClient h
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpop(req, dpopKey, tlsClient)
 	if clientError != nil {
 		log.Fatal(clientError)
 	}
@@ -287,23 +287,44 @@ func HandleTokenRevocation(request url.Values, token string, tokenEndpoint strin
 	return resultString
 }
 
-func HandleUserInfo(token string, tokenEndpoint string, tlsClient http.Client, verbose bool) string {
-	req, requestError := http.NewRequest("GET", tokenEndpoint, nil)
+func fetchUserInfo(token string, userinfoEndpoint string, dpopKey *DpopKey, tlsClient http.Client) (map[string]interface{}, error) {
+	req, requestError := http.NewRequest("GET", userinfoEndpoint, nil)
 	if requestError != nil {
-		log.Fatal(requestError)
+		return nil, requestError
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
+	if dpopKey != nil {
+		req.Header.Set("Authorization", "DPoP "+token)
+	} else {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	req.Header.Set("User-Agent", agent)
-	resp, clientError := tlsClient.Do(req)
+	resp, clientError := doRequestWithDpopAccessToken(req, dpopKey, tlsClient, token)
 	if clientError != nil {
-		log.Fatal(clientError)
+		return nil, clientError
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("userinfo request failed with %s: %s", resp.Status, string(body))
+	}
 	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func HandleUserInfo(token string, userinfoEndpoint string, dpopKey *DpopKey, tlsClient http.Client, verbose bool) string {
+	result, err := fetchUserInfo(token, userinfoEndpoint, dpopKey, tlsClient)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var resultString string
-	json.NewDecoder(resp.Body).Decode(&result)
 	if result != nil {
 		jsonStr, marshalError := json.MarshalIndent(result, "", "    ")
 		if marshalError != nil {

@@ -18,6 +18,7 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 - `pkg/client/` — all OAuth2/OIDC flow handlers
   - `client.go` — `authorization_code`, `refresh`, `client_credentials`, `password` flows; private_key_jwt helpers
   - `exchange.go` — `token-exchange`, `jwt-bearer`, `saml-bearer`, `passcode`, `introspect`, `revoke`, `userinfo`, `token-list`; defines the `agent` HTTP user-agent variable used everywhere
+  - `dpop.go` — DPoP proof generation (RFC 9449): `DpopKey` type, `CreateDpopProof`, `JwkThumbprint` (RFC 7638)
   - `token.go` — shared `OpenIdToken` struct `{IdToken, AccessToken, RefreshToken}`
 - `pkg/cf/` — reads/writes `~/.cf/config.json` for CF UAA simulation (`-cf` flag)
 
@@ -27,10 +28,12 @@ Single-binary Go CLI. All flag parsing and command dispatch lives in `openid-cli
 
 **Client auth precedence** (resolved in `main` before any handler is called):
 1. `-client_assertion` → external JWT (`privateKeyJwt`)
-2. `-client_jwt` P12 + `-pin` → `CreatePrivateKeyJwt` (x5t thumbprint as kid)
+2. `-client_jwt` P12 + `-pin` → `CreatePrivateKeyJwt` (x5t thumbprint as kid); if `-dpop` set, same key used for DPoP via `NewDpopKeyFromX509`
 3. `-client_tls` P12 + `-pin` → mutual TLS `http.Client`
-4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid`
+4. `-client_jwt_key` PEM + `-client_jwt_kid` → `CreatePrivateKeyJwtKid`; if `-dpop` set, same RSA key used for DPoP via `NewDpopKeyFromRSA`
 5. `-client_secret` → plain secret in form body (exception: `HandleCorpIdpExchangeFlow` uses HTTP Basic Auth instead)
+
+**DPoP (RFC 9449):** `-dpop` flag attaches a `DPoP` proof header to all token endpoint requests and DPoP-authenticated userinfo requests. Key reused from `-client_jwt`/`-client_jwt_key`; ephemeral EC P-256 generated if neither is set. Server nonce challenges are retried once and nonces are retained by target endpoint for later requests in the invocation. Userinfo proofs include `ath` and use `Authorization: DPoP`. In the authorization code flow, `dpop_jkt` (RFC 7638 JWK thumbprint) is added to the authorization request. Implementation in `pkg/client/dpop.go`.
 
 **OIDC discovery:** `oidc.NewProvider` fetches `.well-known/openid-configuration`. If discovery fails and `-url` is set with a non-empty command, endpoints fall back to the `-url` value directly (does not apply to the default `authorization_code` flow).
 

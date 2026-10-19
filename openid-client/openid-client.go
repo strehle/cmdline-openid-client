@@ -119,6 +119,7 @@ func main() {
 			"      -header            decode command: show only the JWT header.\n" +
 			"      -payload           decode command: show only the JWT payload.\n" +
 			"      -raw               decode command: with -header or -payload, output plain JSON without colors or labels.\n" +
+			"      -no-par            Disable Pushed Authorization Request (PAR) even if advertised by the server.\n" +
 			"      -redirect_uris     register command: space-separated redirect URIs (RFC 7591).\n" +
 			"      -client_name       register command: human-readable client name (RFC 7591).\n" +
 			"      -grant_types       register command: space-separated grant types (RFC 7591).\n" +
@@ -184,6 +185,7 @@ func main() {
 	var decodeHeader = flag.Bool("header", false, "decode command: show only the JWT header")
 	var decodePayload = flag.Bool("payload", false, "decode command: show only the JWT payload")
 	var decodeRaw = flag.Bool("raw", false, "decode command: with -header or -payload, output plain JSON without colors or labels")
+	var noPar = flag.Bool("no-par", false, "Disable Pushed Authorization Request (PAR) even if advertised by the server")
 	var regRedirectURIs = flag.String("redirect_uris", "", "register command: space-separated list of redirect URIs (RFC 7591)")
 	var regClientName = flag.String("client_name", "", "register command: human-readable client name (RFC 7591)")
 	var regGrantTypes = flag.String("grant_types", "", "register command: space-separated grant types (RFC 7591)")
@@ -289,6 +291,8 @@ func main() {
 		IntroSpectEndpoint   string `json:"introspection_endpoint,omitempty"`
 		UserInfoEndpoint     string `json:"userinfo_endpoint,omitempty"`
 		RegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+		PAREndpoint          string `json:"pushed_authorization_request_endpoint,omitempty"`
+		Issuer               string `json:"issuer,omitempty"`
 	}
 	if *skipTlsVerification {
 		ctx = oidc.InsecureIssuerURLContext(ctx, *issEndPoint)
@@ -329,6 +333,10 @@ func main() {
 		},
 	}
 
+	privateKeyJwtAudience := claims.TokenEndPoint
+	if *command == "" && claims.PAREndpoint != "" && !*noPar && claims.Issuer != "" {
+		privateKeyJwtAudience = claims.Issuer
+	}
 	if *clientAssertion != "" {
 		if *clientJwtKey != "" || *clientJwtPkcs12 != "" {
 			log.Fatal("Invalid state. Provide parameter client_assertion without other private_key_jwt parameters")
@@ -368,7 +376,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, claims.TokenEndPoint, cert.PrivateKey)
+			privateKeyJwt, err = client.CreatePrivateKeyJwt(*clientID, *cert0, privateKeyJwtAudience, cert.PrivateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -443,7 +451,7 @@ func main() {
 				return
 			}
 		}
-		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, claims.TokenEndPoint, signKey)
+		privateKeyJwt, err = client.CreatePrivateKeyJwtKid(*clientID, kidValue, x5tValue, privateKeyJwtAudience, signKey)
 		if err != nil {
 			log.Fatal(err)
 			return
@@ -819,7 +827,11 @@ func main() {
 			}
 		}
 		var bSilent = (*resourceSso || *doRefresh || *exportParam != "") && !verbose
-		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient)
+		parEndpoint := claims.PAREndpoint
+		if *noPar {
+			parEndpoint = ""
+		}
+		var oidctoken = client.HandleOpenIDFlow(requestMap, verbose, bSilent, callbackURL, *scopeParameter, *tokenFormatParameter, *portParameter, claims.EndSessionEndpoint, claims.UserInfoEndpoint, privateKeyJwt, dpopKey, *provider, *tlsClient, parEndpoint)
 		var refreshToken = oidctoken.RefreshToken
 		var idToken = oidctoken.IdToken
 		var outputWritten = false

@@ -159,6 +159,7 @@ Flags:
       -header            decode command: show only the JWT header.
       -payload           decode command: show only the JWT payload.
       -raw               decode command: with -header or -payload, output plain JSON without colors or labels.
+      -no-par            Disable Pushed Authorization Request (PAR) even if advertised by the server in the discovery document.
       -redirect_uris     register command: space-separated redirect URIs (RFC 7591).
       -client_name       register command: human-readable client name (RFC 7591).
       -grant_types       register command: space-separated grant types (RFC 7591).
